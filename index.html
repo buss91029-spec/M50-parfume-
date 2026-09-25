@@ -154,7 +154,7 @@ function sendOrder(e){
  const now=new Date();
  const date=now.toLocaleDateString('en-IN',{day:'2-digit',month:'2-digit',year:'numeric'});
  const time=now.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
- const canvas=document.createElement('canvas'); canvas.width=1200; canvas.height=1700;
+ const canvas=document.createElement('canvas'); canvas.width=1400; canvas.height=2050;
  const ctx=canvas.getContext('2d');
  const W=canvas.width;
  // Premium M50 luxury stationery
@@ -164,59 +164,88 @@ function sendOrder(e){
  ctx.strokeStyle='#b89658'; ctx.lineWidth=3; ctx.strokeRect(58,58,W-116,canvas.height-116);
  ctx.strokeStyle='#d8c08a'; ctx.lineWidth=1; ctx.strokeRect(72,72,W-144,canvas.height-144);
  ctx.fillStyle='#171411'; ctx.textAlign='center';
- ctx.font='bold 82px Georgia, serif'; ctx.fillText('M50',W/2,160);
- ctx.font='bold 25px Arial, sans-serif'; ctx.letterSpacing='5px'; ctx.fillText('L U X U R Y   F R A G R A N C E S',W/2,205);
+ ctx.font='bold 96px Georgia, serif'; ctx.fillText('M50',W/2,160);
+ ctx.font='bold 30px Arial, sans-serif'; ctx.letterSpacing='5px'; ctx.fillText('L U X U R Y   F R A G R A N C E S',W/2,205);
  ctx.letterSpacing='0px';
  // ornamental divider
  ctx.strokeStyle='#b89658'; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(145,245);ctx.lineTo(500,245);ctx.moveTo(700,245);ctx.lineTo(1055,245);ctx.stroke();
  ctx.fillStyle='#b89658';ctx.beginPath();ctx.arc(600,245,7,0,Math.PI*2);ctx.fill();
- ctx.fillStyle='#171411'; ctx.font='bold 38px Georgia, serif'; ctx.fillText('ORDER  INVOICE',W/2,315);
- ctx.font='17px Arial, sans-serif';ctx.fillStyle='#746958';ctx.fillText('CRAFTED WITH ELEGANCE • PREMIUM FRAGRANCE',W/2,348);
+ ctx.fillStyle='#171411'; ctx.font='bold 46px Georgia, serif'; ctx.fillText('ORDER  INVOICE',W/2,315);
+ ctx.font='21px Arial, sans-serif';ctx.fillStyle='#746958';ctx.fillText('CRAFTED WITH ELEGANCE • PREMIUM FRAGRANCE',W/2,348);
  let y=415;
- const labelStyle=()=>{ctx.fillStyle='#756a5b';ctx.font='18px Arial, sans-serif';ctx.textAlign='left'};
- const valueStyle=(bold=false)=>{ctx.fillStyle='#171411';ctx.font=(bold?'bold ':'')+'25px Arial, sans-serif';ctx.textAlign='right'};
+ const labelStyle=()=>{ctx.fillStyle='#756a5b';ctx.font='27px Arial, sans-serif';ctx.textAlign='left'};
+ const valueStyle=(bold=false)=>{ctx.fillStyle='#171411';ctx.font=(bold?'bold ':'')+'31px Arial, sans-serif';ctx.textAlign='right'};
  const row=(label,value,bold=false)=>{labelStyle();ctx.fillText(label.toUpperCase(),130,y);valueStyle(bold);ctx.fillText(value,1070,y);y+=58;};
  row('Product',p,true); row('Size',s); row('Quantity',String(q)); row('Price / Unit','₹'+pr); row('Subtotal','₹'+subtotal);
  ctx.strokeStyle='#cdbb94';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(130,y-28);ctx.lineTo(1070,y-28);ctx.stroke();y+=18;
  row('Delivery Charges','₹'+delivery);
  // total panel
- ctx.fillStyle='#171411';ctx.fillRect(110,y-15,980,88);
- ctx.fillStyle='#f5f0e6';ctx.textAlign='left';ctx.font='bold 27px Arial, sans-serif';ctx.fillText('TOTAL PAYABLE',140,y+42);
- ctx.textAlign='right';ctx.font='bold 38px Georgia, serif';ctx.fillText('₹'+total,1060,y+43);ctx.textAlign='left';y+=135;
+ ctx.fillStyle='#171411';ctx.fillRect(110,y-18,1180,100);
+ ctx.fillStyle='#f5f0e6';ctx.textAlign='left';ctx.font='bold 33px Arial, sans-serif';ctx.fillText('TOTAL PAYABLE',140,y+42);
+ ctx.textAlign='right';ctx.font='bold 46px Georgia, serif';ctx.fillText('₹'+total,1060,y+43);ctx.textAlign='left';y+=135;
  // customer section
- ctx.fillStyle='#171411';ctx.font='bold 26px Georgia, serif';ctx.fillText('CLIENT DETAILS',130,y);
+ ctx.fillStyle='#171411';ctx.font='bold 32px Georgia, serif';ctx.fillText('CLIENT DETAILS',130,y);
  ctx.strokeStyle='#b89658';ctx.beginPath();ctx.moveTo(330,y-8);ctx.lineTo(1070,y-8);ctx.stroke();y+=60;
  row('Name',name); row('Phone / WhatsApp',phone); row('Pincode',pincode); row('City',city);
- ctx.fillStyle='#756a5b';ctx.font='18px Arial, sans-serif';ctx.fillText('DELIVERY ADDRESS',130,y);y+=34;
- ctx.fillStyle='#171411';ctx.font='22px Arial, sans-serif';
- const words=address.split(/\s+/);let line='',lines=[];words.forEach(w=>{const test=line?line+' '+w:w;if(ctx.measureText(test).width>900){lines.push(line);line=w}else line=test});if(line)lines.push(line);
- lines.slice(0,4).forEach(l=>{ctx.fillText(l,130,y);y+=34});
+ ctx.fillStyle='#756a5b';ctx.font='27px Arial, sans-serif';ctx.fillText('DELIVERY ADDRESS',130,y);y+=34;
+ ctx.fillStyle='#171411';ctx.font='27px Arial, sans-serif';
+ const words=address.split(/\s+/);let line='',lines=[];words.forEach(w=>{const test=line?line+' '+w:w;if(ctx.measureText(test).width>1120){lines.push(line);line=w}else line=test});if(line)lines.push(line);
+ lines.slice(0,6).forEach(l=>{ctx.fillText(l,130,y);y+=42});
  y+=35;ctx.strokeStyle='#cdbb94';ctx.beginPath();ctx.moveTo(130,y);ctx.lineTo(1070,y);ctx.stroke();y+=55;
  const orderNo='M50-'+Date.now().toString().slice(-8);
- ctx.textAlign='left';ctx.fillStyle='#756a5b';ctx.font='17px Arial, sans-serif';ctx.fillText('INVOICE NO.  '+orderNo,130,y);
+ ctx.textAlign='left';ctx.fillStyle='#756a5b';ctx.font='21px Arial, sans-serif';ctx.fillText('INVOICE NO.  '+orderNo,130,y);
  ctx.textAlign='right';ctx.fillText('DATE  '+date+'   •   TIME  '+time,1070,y);y+=75;
- ctx.textAlign='center';ctx.fillStyle='#171411';ctx.font='bold 25px Georgia, serif';ctx.fillText('THANK YOU FOR CHOOSING M50',W/2,y);y+=38;
- ctx.font='17px Arial, sans-serif';ctx.fillStyle='#756a5b';ctx.fillText('This digital invoice is shared as a fixed image for your order record.',W/2,y);
- y+=55;ctx.fillStyle='#b89658';ctx.font='bold 16px Arial, sans-serif';ctx.fillText('M50  •  LUXURY FRAGRANCES',W/2,y);
+ ctx.textAlign='center';ctx.fillStyle='#171411';ctx.font='bold 31px Georgia, serif';ctx.fillText('THANK YOU FOR CHOOSING M50',W/2,y);y+=38;
+ ctx.font='21px Arial, sans-serif';ctx.fillStyle='#756a5b';ctx.fillText('This digital invoice is shared as a fixed image for your order record.',W/2,y);
+ y+=55;ctx.fillStyle='#b89658';ctx.font='bold 20px Arial, sans-serif';ctx.fillText('M50  •  LUXURY FRAGRANCES',W/2,y);
  canvas.toBlob(async blob=>{
    if(!blob){alert('Bill generate nahi thai. Please try again.');return;}
-   const file=new File([blob],'M50-Order-Bill.png',{type:'image/png'});
-   const shareData={files:[file],title:'M50 Order Bill',text:'M50 Luxury Fragrances - Order Bill'};
-   try{
-     if(navigator.canShare && navigator.canShare({files:[file]})){
-       await navigator.share(shareData);
-     }else{
-       const url=URL.createObjectURL(blob);
-       const w=window.open(url,'_blank');
-       if(!w) location.href=url;
-       alert('Bill image open thai gayu. Tya thi WhatsApp par Share kari shako cho.');
+   // WhatsApp: open your own M50 contact directly (no contact-selection screen).
+   // The bill is also included as a clean text invoice in the WhatsApp message.
+   const orderNo='M50-'+Date.now().toString().slice(-8);
+   const billText =
+`🧾 M50 ORDER BILL\n\n`+
+`Order No: ${orderNo}\n`+
+`Product: ${p}\n`+
+`Size: ${s}\n`+
+`Quantity: ${q}\n`+
+`Price / Unit: ₹${pr}\n`+
+`Subtotal: ₹${subtotal}\n`+
+`Delivery: ₹${delivery}\n`+
+`TOTAL: ₹${total}\n\n`+
+`━━━━━━━━━━━━━━━━━━━━\n`+
+`CUSTOMER DETAILS\n`+
+`Name: ${name}\n`+
+`Phone: ${phone}\n`+
+`Pincode: ${pincode}\n`+
+`City: ${city}\n`+
+`DELIVERY ADDRESS:\n${address}\n`+
+`━━━━━━━━━━━━━━━━━━━━\n\n`+
+`M50 • Luxury Fragrances`;
+   const waUrl='https://wa.me/919427589717?text='+encodeURIComponent(billText);
+   // Direct WhatsApp flow: save the fixed bill image, then open ONLY M50's WhatsApp number.
+   // A normal webpage cannot silently attach/send a local image inside WhatsApp.
+   const billFile = new File([blob], orderNo+'.png', {type:'image/png'});
+   try {
+     const a=document.createElement('a');
+     a.href=URL.createObjectURL(blob);
+     a.download=orderNo+'.png';
+     document.body.appendChild(a);
+     a.click();
+     a.remove();
+     setTimeout(()=>URL.revokeObjectURL(a.href),3000);
+   } catch(downloadErr) {}
+
+   // Best-effort: copy the bill image to clipboard when the browser permits it,
+   // so the user can paste it directly into the already-open WhatsApp chat.
+   try {
+     if(navigator.clipboard && window.ClipboardItem){
+       await navigator.clipboard.write([new ClipboardItem({'image/png':blob})]);
      }
-   }catch(err){
-     if(err && err.name!=='AbortError'){
-       const url=URL.createObjectURL(blob); const w=window.open(url,'_blank');
-       if(!w) location.href=url;
-     }
-   }
+   } catch(clipErr) {}
+
+   // Open the M50 WhatsApp number directly — no "Send to..." contact picker.
+   window.location.href='https://wa.me/919427589717?text='+encodeURIComponent(billText);
  },'image/png');
 }
 document.addEventListener('keydown',e=>{if(modal.classList.contains('open')){if(e.key==='Escape')closeModal();if(e.key==='ArrowLeft')move(-1);if(e.key==='ArrowRight')move(1)}if(orderModal.classList.contains('open')&&e.key==='Escape')closeOrder()});
