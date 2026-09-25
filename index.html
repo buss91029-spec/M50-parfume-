@@ -58,7 +58,7 @@ footer{border-top:1px solid var(--line);padding:28px 4%;display:flex;justify-con
 </style>
 </head>
 <body>
-<header class="nav"><div class="navin"><a class="logo" href="#home">M50</a><nav class="links"><a href="#home">Home</a><a href="#collection">Collection</a><a href="#about">Our Story</a><a href="#contact">Contact</a><a href="javascript:m50OpenAdmin()">Admin</a></nav></div></header>
+<header class="nav"><div class="navin"><a class="logo" href="#home">M50</a><nav class="links"><a href="#home">Home</a><a href="#collection">Collection</a><a href="#about">Our Story</a><a href="#contact">Contact</a></nav></div></header>
 
 <main id="home">
 <section class="hero"><div class="heroin"><div class="kicker">LUXURY FRAGRANCES • M50</div><h1>More Than<br>Just A Scent.</h1><p>A signature collection created to make every moment memorable. Discover M50 Wanted, Cool Water and Flora.</p><a class="btn" href="#collection">Explore Collection →</a></div></section>
@@ -245,7 +245,19 @@ function sendOrder(e){
    } catch(clipErr) {}
 
    // Open the M50 WhatsApp number directly — no "Send to..." contact picker.
-   window.location.href='https://web.whatsapp.com/send?phone=919427589717&text='+encodeURIComponent(billText);
+   const encodedBill=encodeURIComponent(billText);
+   const waWeb='https://web.whatsapp.com/send?phone=919427589717&text='+encodedBill;
+   const isMobile=/Android|iPhone|iPad|iPod|Windows Phone/i.test(navigator.userAgent);
+   if(isMobile){
+     // Phone: open the installed WhatsApp app directly.
+     const appUrl='whatsapp://send?phone=919427589717&text='+encodedBill;
+     const fallbackTimer=setTimeout(()=>{ window.location.href=waWeb; },1800);
+     window.location.href=appUrl;
+     window.addEventListener('pagehide',()=>clearTimeout(fallbackTimer),{once:true});
+   }else{
+     // Computer: open WhatsApp Web directly in the browser.
+     window.location.href=waWeb;
+   }
  },'image/png');
 }
 document.addEventListener('keydown',e=>{if(modal.classList.contains('open')){if(e.key==='Escape')closeModal();if(e.key==='ArrowLeft')move(-1);if(e.key==='ArrowRight')move(1)}if(orderModal.classList.contains('open')&&e.key==='Escape')closeOrder()});
@@ -325,7 +337,7 @@ document.addEventListener('keydown',e=>{if(modal.classList.contains('open')){if(
  window.m50OpenAdmin=function(){document.getElementById('m50AdminLogin').classList.add('open');document.getElementById('m50AdminPassword').focus()};
  window.m50CloseAdmin=function(){document.getElementById('m50AdminLogin').classList.remove('open');document.getElementById('m50AdminPanel').classList.remove('open');document.getElementById('m50AdminPassword').value='';document.getElementById('m50AdminError').textContent=''};
  window.m50CheckPassword=function(){if(document.getElementById('m50AdminPassword').value===ADMIN_PASSWORD){document.getElementById('m50AdminLogin').classList.remove('open');document.getElementById('m50AdminPanel').classList.add('open');m50RenderAdmin()}else document.getElementById('m50AdminError').textContent='Wrong password.'};
- document.addEventListener('keydown',e=>{if(e.ctrlKey&&e.shiftKey&&e.key.toLowerCase()==='m'){e.preventDefault();document.getElementById('m50AdminPanel').classList.contains('open')?m50CloseAdmin():m50OpenAdmin()}if(e.key==='Escape')m50CloseAdmin()});
+ document.addEventListener('keydown',e=>{if(e.ctrlKey&&e.shiftKey&&e.key.toLowerCase()==='m'){e.preventDefault();m50OpenAdmin()}if(e.key==='Escape')m50CloseAdmin()});
 
  function allProducts(){return Object.assign({},BASE,read(STORAGE_PRICES,{}))}
  function applyPrices(){const prices=allProducts();Object.keys(prices).forEach(name=>{const p=prices[name];document.querySelectorAll('.price').forEach(btn=>{const b=btn.querySelector('b'),sp=btn.querySelector('span');if(!b||!sp)return;const size=b.textContent.trim(),oc=btn.getAttribute('onclick')||'';if(oc.indexOf(name)>=0&&p[size]!=null){sp.textContent='₹'+p[size];btn.setAttribute('onclick','openOrder('+JSON.stringify(name)+','+JSON.stringify(size)+','+JSON.stringify(String(p[size]))+')')}})});const sel=document.getElementById('product');if(sel){sel.innerHTML='';Object.keys(prices).forEach(n=>{const o=document.createElement('option');o.value=n;o.textContent=n;sel.appendChild(o)});if(typeof updatePrice==='function')updatePrice()}}
@@ -337,14 +349,73 @@ document.addEventListener('keydown',e=>{if(modal.classList.contains('open')){if(
  window.m50SaveGallery=async function(key,name){const t=document.getElementById('thumb_'+key).files[0],g=document.getElementById('gal_'+key).files;const ov=read(STORAGE_GALLERY,{}),old=ov[key]||{};if(t)old.thumb=await dataURL(t);if(g&&g.length)old.gallery=await filesToData(g);ov[key]=old;save(STORAGE_GALLERY,ov);applyGalleryOverrides();renderExistingGallery();alert(name+' gallery saved.')};
  function applyGalleryOverrides(){const ov=read(STORAGE_GALLERY,{});Object.keys(ov).forEach(key=>{const name=key.replaceAll('_',' ').toUpperCase();const x=ov[key];if(typeof galleries!=='undefined'&&x.gallery&&x.gallery.length)galleries[key]=x.gallery;document.querySelectorAll('.card').forEach(card=>{const h=card.querySelector('h3');if(!h||h.textContent.trim().toUpperCase()!==name)return;const img=card.querySelector('.cardimg');if(img&&x.thumb)img.src=x.thumb;const btn=card.querySelector('.gallerybtn');if(btn)btn.setAttribute('onclick',"openGallery("+JSON.stringify(key)+")")})})}
 
- window.m50AddProduct=async function(){const name=document.getElementById('m50NewName').value.trim();if(!name){alert('Product name required.');return}const key=name.toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_|_$/g,'');const thumb=await dataURL(document.getElementById('m50NewThumb').files[0]);const gallery=await filesToData(document.getElementById('m50NewGallery').files);const products=read(STORAGE_PRODUCTS,[]);if(products.some(x=>x.name.toLowerCase()===name.toLowerCase())){alert('Product already exists.');return}products.push({name,category:document.getElementById('m50NewCategory').value,desc:document.getElementById('m50NewDesc').value,note1:document.getElementById('m50NewNote1').value,note2:document.getElementById('m50NewNote2').value,note3:document.getElementById('m50NewNote3').value,thumb,gallery,prices:{'20 ML':document.getElementById('m50P20').value||'0','50 ML':document.getElementById('m50P50').value||'0','100 ML':document.getElementById('m50P100').value||'0'}});save(STORAGE_PRODUCTS,products);const pov=read(STORAGE_PRICES,{});pov[name]=products[products.length-1].prices;save(STORAGE_PRICES,pov);m50RenderCustomProducts();alert('Product added. Refresh the page to see the new product.')};
+ function m50ImageData(file,maxSide=900,quality=.78){
+  return new Promise((resolve,reject)=>{
+    if(!file){resolve('');return}
+    const reader=new FileReader();
+    reader.onload=()=>{
+      const img=new Image();
+      img.onload=()=>{
+        const scale=Math.min(1,maxSide/Math.max(img.width,img.height));
+        const c=document.createElement('canvas');
+        c.width=Math.max(1,Math.round(img.width*scale));
+        c.height=Math.max(1,Math.round(img.height*scale));
+        c.getContext('2d').drawImage(img,0,0,c.width,c.height);
+        resolve(c.toDataURL('image/jpeg',quality));
+      };
+      img.onerror=reject; img.src=reader.result;
+    };
+    reader.onerror=reject; reader.readAsDataURL(file);
+  });
+}
+function m50CustomCard(x){
+  const key=x.name.toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_|_$/g,'');
+  const gallery=(x.gallery&&x.gallery.length)?x.gallery:[x.thumb].filter(Boolean);
+  if(typeof galleries!=='undefined') galleries[key]=gallery;
+  const notes=[x.note1,x.note2,x.note3].filter(Boolean).map(n=>'<span class="note">'+esc(n)+'</span>').join('');
+  const img=x.thumb||gallery[0]||'';
+  return '<article class="card m50-custom-card" data-custom-product="'+esc(key)+'">'+
+    '<img class="cardimg" src="'+img+'" data-gallery="'+esc(key)+'" alt="'+esc(x.name)+'">'+
+    '<div class="cardbody"><div class="tag">'+esc(x.category||'Unisex')+'</div><h3>'+esc(x.name)+'</h3><p>'+esc(x.desc||'')+'</p>'+ 
+    '<div class="notes">'+notes+'</div><div class="card-actions"><button class="gallerybtn" onclick="openGallery('+JSON.stringify(key)+')">View Photos</button></div>'+ 
+    '<div class="prices">'+['20 ML','50 ML','100 ML'].map(sz=>'<button class="price" onclick="openOrder('+JSON.stringify(x.name)+','+JSON.stringify(sz)+','+JSON.stringify(String(x.prices[sz]||'0'))+')"><b>'+sz+'</b><span>₹'+esc(x.prices[sz]||'0')+'</span></button>').join('')+'</div></div></article>';
+}
+function m50RenderCustomCards(){
+  const grid=document.getElementById('productGrid'); if(!grid)return;
+  grid.querySelectorAll('.m50-custom-card').forEach(e=>e.remove());
+  const items=read(STORAGE_PRODUCTS,[]);
+  if(items.length) grid.insertAdjacentHTML('beforeend',items.map(m50CustomCard).join(''));
+  const q=(document.getElementById('productSearch')?.value||'').trim().toLowerCase();
+  let shown=0; grid.querySelectorAll('.card').forEach(card=>{const match=!q||card.textContent.toLowerCase().includes(q);card.style.display=match?'':'none';if(match)shown++});
+  const empty=document.getElementById('searchEmpty');if(empty)empty.style.display=shown?'none':'';
+}
+window.m50AddProduct=async function(){
+  try{
+    const name=document.getElementById('m50NewName').value.trim();
+    if(!name){alert('Product name required.');return}
+    const products=read(STORAGE_PRODUCTS,[]);
+    if(products.some(x=>x.name.toLowerCase()===name.toLowerCase())){alert('Product already exists.');return}
+    const p20=document.getElementById('m50P20').value.trim(),p50=document.getElementById('m50P50').value.trim(),p100=document.getElementById('m50P100').value.trim();
+    if(!p20||!p50||!p100){alert('Please enter all 20 ML, 50 ML and 100 ML prices.');return}
+    const thumb=await m50ImageData(document.getElementById('m50NewThumb').files[0]);
+    const files=Array.from(document.getElementById('m50NewGallery').files||[]);
+    const gallery=await Promise.all(files.map(f=>m50ImageData(f)));
+    const item={name,category:document.getElementById('m50NewCategory').value,desc:document.getElementById('m50NewDesc').value,note1:document.getElementById('m50NewNote1').value,note2:document.getElementById('m50NewNote2').value,note3:document.getElementById('m50NewNote3').value,thumb,gallery,prices:{'20 ML':p20,'50 ML':p50,'100 ML':p100}};
+    products.push(item); save(STORAGE_PRODUCTS,products);
+    const pov=read(STORAGE_PRICES,{});pov[name]=item.prices;save(STORAGE_PRICES,pov);
+    m50RenderCustomProducts();m50RenderCustomCards();applyPrices();
+    ['m50NewName','m50NewDesc','m50NewNote1','m50NewNote2','m50NewNote3','m50P20','m50P50','m50P100'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=''});
+    document.getElementById('m50NewThumb').value='';document.getElementById('m50NewGallery').value='';
+    alert('Product added successfully. It is now visible on the website.');
+  }catch(err){console.error(err);alert('Product add failed. Please use smaller images or try again.');}
+};
  window.m50RenderCustomProducts=function(){const box=document.getElementById('m50CustomList'),items=read(STORAGE_PRODUCTS,[]);box.innerHTML=items.length?items.map((x,i)=>'<div class="m50-admin-row"><b>'+esc(x.name)+'</b><span>'+esc(x.category)+'</span><span>20/50/100 ML: ₹'+esc(x.prices['20 ML'])+' / ₹'+esc(x.prices['50 ML'])+' / ₹'+esc(x.prices['100 ML'])+'</span><button class="m50-admin-btn" onclick="m50DeleteProduct('+i+')">Delete</button></div>').join(''):'<span style="color:#999">No added products.</span>'};
  window.m50DeleteProduct=function(i){const a=read(STORAGE_PRODUCTS,[]);const x=a[i];if(!x)return;if(!confirm('Delete '+x.name+'?'))return;a.splice(i,1);save(STORAGE_PRODUCTS,a);const p=read(STORAGE_PRICES,{});delete p[x.name];save(STORAGE_PRICES,p);m50RenderCustomProducts()};
  window.m50ResetCustomProducts=function(){if(confirm('Remove all added products?')){save(STORAGE_PRODUCTS,[]);m50RenderCustomProducts();alert('Added products removed.')}};
  window.m50RenderAdmin=function(){renderExistingPrices();renderExistingGallery();m50RenderCustomProducts()};
 
  // Apply saved edits on page load.
- setTimeout(()=>{applyPrices();applyGalleryOverrides()},0);
+ setTimeout(()=>{applyPrices();applyGalleryOverrides();m50RenderCustomCards()},0);
 
   function m50GalleryStoreKey(name){ return 'm50_gallery_override_' + name; }
   function m50ReadGallery(name){
