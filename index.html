@@ -97,7 +97,7 @@ const prices={
 };
 let currentGallery=[],index=0;
 const modal=document.getElementById('modal'),main=document.getElementById('modalmain'),thumbs=document.getElementById('mthumbs');
-function openGallery(name){currentGallery=galleries[name];index=0;renderModal();modal.classList.add('open')}
+function openGallery(name){currentGallery=(typeof galleries!=='undefined'&&Array.isArray(galleries[name]))?galleries[name]:[];if(!currentGallery.length){alert('No photos available for this product.');return}index=0;renderModal();modal.classList.add('open')}
 function renderModal(){main.src=currentGallery[index];thumbs.innerHTML='';currentGallery.forEach((src,i)=>{const im=document.createElement('img');im.src=src;im.className=i===index?'active':'';im.onclick=()=>{index=i;renderModal()};thumbs.appendChild(im)})}
 function closeModal(){modal.classList.remove('open')}
 function move(n){index=(index+n+currentGallery.length)%currentGallery.length;renderModal()}
@@ -271,7 +271,8 @@ document.addEventListener('keydown',e=>{if(modal.classList.contains('open')){if(
 .m50-admin-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.m50-admin-grid .full{grid-column:1/-1}
 .m50-admin-box input,.m50-admin-box textarea,.m50-admin-box select{width:100%;padding:11px;border-radius:8px;border:1px solid #66502b;background:#151515;color:#fff}
 .m50-admin-box textarea{min-height:75px;resize:vertical}.m50-admin-box label{display:block;margin:0 0 6px;color:#d8c08a;font-size:13px}
-.m50-admin-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}.m50-admin-btn{padding:10px 14px;border:1px solid #d8a84e;border-radius:8px;background:#161616;color:#f3d18a;cursor:pointer}.m50-admin-btn.primary{background:#d8a84e;color:#080808}
+.m50-admin-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}.m50-custom-card .gallerybtn,.m50-custom-card .price{touch-action:manipulation;-webkit-tap-highlight-color:rgba(216,168,78,.18);position:relative;z-index:3;pointer-events:auto}.m50-custom-card .gallerybtn:disabled{opacity:.55;cursor:not-allowed}.m50-touch-active{transform:scale(.98)}
+.m50-admin-btn{padding:10px 14px;border:1px solid #d8a84e;border-radius:8px;background:#161616;color:#f3d18a;cursor:pointer}.m50-admin-btn.primary{background:#d8a84e;color:#080808}
 .m50-admin-card{border:1px solid rgba(216,168,78,.3);border-radius:12px;padding:14px;margin:12px 0;background:#101010}.m50-admin-card h4{margin:0 0 12px;color:#f3d18a}
 .m50-admin-row{display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid #262626}.m50-admin-row b{color:#f3d18a}
 .m50-file-note{font-size:12px;color:#999;margin-top:5px}.m50-gallery-preview{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}.m50-gallery-preview img{width:70px;height:70px;object-fit:cover;border-radius:8px;border:1px solid #66502b}
@@ -374,17 +375,41 @@ function m50CustomCard(x){
   if(typeof galleries!=='undefined') galleries[key]=gallery;
   const notes=[x.note1,x.note2,x.note3].filter(Boolean).map(n=>'<span class="note">'+esc(n)+'</span>').join('');
   const img=x.thumb||gallery[0]||'';
+  const photoBtn=gallery.length?'<button type="button" class="gallerybtn m50-touch-btn" data-m50-gallery="'+esc(key)+'">View Photos</button>':'<button type="button" class="gallerybtn m50-touch-btn" disabled>No Photos</button>';
+  const priceBtns=['20 ML','50 ML','100 ML'].map(sz=>'<button type="button" class="price m50-touch-btn" data-m50-product="'+esc(x.name)+'" data-m50-size="'+sz+'" data-m50-price="'+esc(x.prices[sz]||'0')+'"><b>'+sz+'</b><span>₹'+esc(x.prices[sz]||'0')+'</span></button>').join('');
   return '<article class="card m50-custom-card" data-custom-product="'+esc(key)+'">'+
     '<img class="cardimg" src="'+img+'" data-gallery="'+esc(key)+'" alt="'+esc(x.name)+'">'+
     '<div class="cardbody"><div class="tag">'+esc(x.category||'Unisex')+'</div><h3>'+esc(x.name)+'</h3><p>'+esc(x.desc||'')+'</p>'+ 
-    '<div class="notes">'+notes+'</div><div class="card-actions"><button class="gallerybtn" onclick="openGallery('+JSON.stringify(key)+')">View Photos</button></div>'+ 
-    '<div class="prices">'+['20 ML','50 ML','100 ML'].map(sz=>'<button class="price" onclick="openOrder('+JSON.stringify(x.name)+','+JSON.stringify(sz)+','+JSON.stringify(String(x.prices[sz]||'0'))+')"><b>'+sz+'</b><span>₹'+esc(x.prices[sz]||'0')+'</span></button>').join('')+'</div></div></article>';
+    '<div class="notes">'+notes+'</div><div class="card-actions">'+photoBtn+'</div>'+ 
+    '<div class="prices">'+priceBtns+'</div></div></article>';
+}
+function m50BindCustomTouch(){
+  const grid=document.getElementById('productGrid');
+  if(!grid || grid.dataset.m50TouchBound==='1') return;
+  grid.dataset.m50TouchBound='1';
+  grid.addEventListener('click',function(e){
+    const galleryBtn=e.target.closest('[data-m50-gallery]');
+    if(galleryBtn && !galleryBtn.disabled){
+      e.preventDefault(); e.stopPropagation();
+      openGallery(galleryBtn.getAttribute('data-m50-gallery')); return;
+    }
+    const priceBtn=e.target.closest('[data-m50-product][data-m50-size]');
+    if(priceBtn && !priceBtn.disabled){
+      e.preventDefault(); e.stopPropagation();
+      openOrder(priceBtn.getAttribute('data-m50-product'),priceBtn.getAttribute('data-m50-size'),priceBtn.getAttribute('data-m50-price')); return;
+    }
+  },false);
+  grid.addEventListener('touchend',function(e){
+    const btn=e.target.closest('.m50-touch-btn');
+    if(btn && !btn.disabled) btn.classList.add('m50-touch-active');
+  },{passive:true});
 }
 function m50RenderCustomCards(){
   const grid=document.getElementById('productGrid'); if(!grid)return;
   grid.querySelectorAll('.m50-custom-card').forEach(e=>e.remove());
   const items=read(STORAGE_PRODUCTS,[]);
   if(items.length) grid.insertAdjacentHTML('beforeend',items.map(m50CustomCard).join(''));
+  m50BindCustomTouch();
   const q=(document.getElementById('productSearch')?.value||'').trim().toLowerCase();
   let shown=0; grid.querySelectorAll('.card').forEach(card=>{const match=!q||card.textContent.toLowerCase().includes(q);card.style.display=match?'':'none';if(match)shown++});
   const empty=document.getElementById('searchEmpty');if(empty)empty.style.display=shown?'none':'';
@@ -415,7 +440,7 @@ window.m50AddProduct=async function(){
  window.m50RenderAdmin=function(){renderExistingPrices();renderExistingGallery();m50RenderCustomProducts()};
 
  // Apply saved edits on page load.
- setTimeout(()=>{applyPrices();applyGalleryOverrides();m50RenderCustomCards()},0);
+ setTimeout(()=>{applyPrices();applyGalleryOverrides();m50RenderCustomCards();m50BindCustomTouch()},0);
 
   function m50GalleryStoreKey(name){ return 'm50_gallery_override_' + name; }
   function m50ReadGallery(name){
