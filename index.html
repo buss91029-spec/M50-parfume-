@@ -154,7 +154,7 @@ function sendOrder(e){
  const now=new Date();
  const date=now.toLocaleDateString('en-IN',{day:'2-digit',month:'2-digit',year:'numeric'});
  const time=now.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
- const canvas=document.createElement('canvas'); canvas.width=1400; canvas.height=2050;
+ const canvas=document.createElement('canvas'); canvas.width=1400; canvas.height=2450;
  const ctx=canvas.getContext('2d');
  const W=canvas.width;
  // Premium M50 luxury stationery
@@ -187,10 +187,10 @@ function sendOrder(e){
  ctx.fillStyle='#171411';ctx.font='bold 32px Georgia, serif';ctx.fillText('CLIENT DETAILS',130,y);
  ctx.strokeStyle='#b89658';ctx.beginPath();ctx.moveTo(330,y-8);ctx.lineTo(1070,y-8);ctx.stroke();y+=60;
  row('Name',name); row('Phone / WhatsApp',phone); row('Pincode',pincode); row('City',city);
- ctx.fillStyle='#756a5b';ctx.font='27px Arial, sans-serif';ctx.fillText('DELIVERY ADDRESS',130,y);y+=34;
+ ctx.fillStyle='#756a5b';ctx.font='bold 27px Arial, sans-serif';ctx.fillText('DELIVERY ADDRESS',130,y);y+=42;
  ctx.fillStyle='#171411';ctx.font='27px Arial, sans-serif';
- const words=address.split(/\s+/);let line='',lines=[];words.forEach(w=>{const test=line?line+' '+w:w;if(ctx.measureText(test).width>1120){lines.push(line);line=w}else line=test});if(line)lines.push(line);
- lines.slice(0,6).forEach(l=>{ctx.fillText(l,130,y);y+=42});
+ const words=address.split(/\s+/).filter(Boolean);let line='',lines=[];words.forEach(w=>{const test=line?line+' '+w:w;if(ctx.measureText(test).width>940 && line){lines.push(line);line=w}else line=test});if(line)lines.push(line);
+ lines.forEach(l=>{ctx.fillText(l,130,y);y+=42});
  y+=35;ctx.strokeStyle='#cdbb94';ctx.beginPath();ctx.moveTo(130,y);ctx.lineTo(1070,y);ctx.stroke();y+=55;
  const orderNo='M50-'+Date.now().toString().slice(-8);
  ctx.textAlign='left';ctx.fillStyle='#756a5b';ctx.font='21px Arial, sans-serif';ctx.fillText('INVOICE NO.  '+orderNo,130,y);
