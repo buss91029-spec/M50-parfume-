@@ -245,7 +245,7 @@ function sendOrder(e){
    } catch(clipErr) {}
 
    // Open the M50 WhatsApp number directly — no "Send to..." contact picker.
-   window.location.href='https://wa.me/919427589717?text='+encodeURIComponent(billText);
+   window.location.href='https://web.whatsapp.com/send?phone=919427589717&text='+encodeURIComponent(billText);
  },'image/png');
 }
 document.addEventListener('keydown',e=>{if(modal.classList.contains('open')){if(e.key==='Escape')closeModal();if(e.key==='ArrowLeft')move(-1);if(e.key==='ArrowRight')move(1)}if(orderModal.classList.contains('open')&&e.key==='Escape')closeOrder()});
