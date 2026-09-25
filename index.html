@@ -187,11 +187,20 @@ function sendOrder(e){
  ctx.fillStyle='#171411';ctx.font='bold 32px Georgia, serif';ctx.fillText('CLIENT DETAILS',130,y);
  ctx.strokeStyle='#b89658';ctx.beginPath();ctx.moveTo(330,y-8);ctx.lineTo(1070,y-8);ctx.stroke();y+=60;
  row('Name',name); row('Phone / WhatsApp',phone); row('Pincode',pincode); row('City',city);
- ctx.fillStyle='#756a5b';ctx.font='27px Arial, sans-serif';ctx.fillText('DELIVERY ADDRESS',130,y);y+=34;
- ctx.fillStyle='#171411';ctx.font='27px Arial, sans-serif';
- const words=address.split(/\s+/);let line='',lines=[];words.forEach(w=>{const test=line?line+' '+w:w;if(ctx.measureText(test).width>1120){lines.push(line);line=w}else line=test});if(line)lines.push(line);
- lines.slice(0,6).forEach(l=>{ctx.fillText(l,130,y);y+=42});
- y+=35;ctx.strokeStyle='#cdbb94';ctx.beginPath();ctx.moveTo(130,y);ctx.lineTo(1070,y);ctx.stroke();y+=55;
+ ctx.textAlign='left';
+ ctx.fillStyle='#756a5b';ctx.font='bold 25px Arial, sans-serif';ctx.fillText('DELIVERY ADDRESS',130,y);y+=38;
+ ctx.fillStyle='#171411';ctx.font='25px Arial, sans-serif';
+ const addressText=(address||'').trim();
+ const words=addressText.split(/\s+/).filter(Boolean);
+ let line='',lines=[];
+ words.forEach(w=>{
+   const test=line?line+' '+w:w;
+   if(ctx.measureText(test).width>900 && line){lines.push(line);line=w}else{line=test}
+ });
+ if(line)lines.push(line);
+ if(!lines.length)lines=['-'];
+ lines.slice(0,5).forEach(l=>{ctx.fillText(l,130,y);y+=38});
+ y+=28;ctx.strokeStyle='#cdbb94';ctx.beginPath();ctx.moveTo(130,y);ctx.lineTo(1070,y);ctx.stroke();y+=55;
  const orderNo='M50-'+Date.now().toString().slice(-8);
  ctx.textAlign='left';ctx.fillStyle='#756a5b';ctx.font='21px Arial, sans-serif';ctx.fillText('INVOICE NO.  '+orderNo,130,y);
  ctx.textAlign='right';ctx.fillText('DATE  '+date+'   •   TIME  '+time,1070,y);y+=75;
@@ -223,29 +232,23 @@ function sendOrder(e){
 `━━━━━━━━━━━━━━━━━━━━\n\n`+
 `M50 • Luxury Fragrances`;
    const waUrl='https://wa.me/919427589717?text='+encodeURIComponent(billText);
-   // Direct WhatsApp flow: save the fixed bill image, then open ONLY M50's WhatsApp number.
-   // A normal webpage cannot silently attach/send a local image inside WhatsApp.
+   // Share the generated bill as a real PNG image on Android/iOS. The user can choose WhatsApp in the system share sheet.
+   // A webpage cannot silently force-open WhatsApp with an attached image; the OS requires the user's app selection.
    const billFile = new File([blob], orderNo+'.png', {type:'image/png'});
-   try {
-     const a=document.createElement('a');
-     a.href=URL.createObjectURL(blob);
-     a.download=orderNo+'.png';
-     document.body.appendChild(a);
-     a.click();
-     a.remove();
-     setTimeout(()=>URL.revokeObjectURL(a.href),3000);
-   } catch(downloadErr) {}
-
-   // Best-effort: copy the bill image to clipboard when the browser permits it,
-   // so the user can paste it directly into the already-open WhatsApp chat.
-   try {
-     if(navigator.clipboard && window.ClipboardItem){
-       await navigator.clipboard.write([new ClipboardItem({'image/png':blob})]);
+   if (navigator.share && navigator.canShare && navigator.canShare({files:[billFile]})) {
+     try {
+       await navigator.share({
+         title: 'M50 Order Bill '+orderNo,
+         text: 'M50 • Luxury Fragrances — Order Bill',
+         files: [billFile]
+       });
+       return;
+     } catch (shareErr) {
+       if (shareErr && shareErr.name === 'AbortError') return;
      }
-   } catch(clipErr) {}
-
-   // Open the M50 WhatsApp number directly — no "Send to..." contact picker.
-   window.location.href='https://wa.me/919427589717?text='+encodeURIComponent(billText);
+   }
+   // Fallback for browsers that do not support file sharing: open the M50 WhatsApp chat with the bill text.
+   window.location.href=waUrl;
  },'image/png');
 }
 document.addEventListener('keydown',e=>{if(modal.classList.contains('open')){if(e.key==='Escape')closeModal();if(e.key==='ArrowLeft')move(-1);if(e.key==='ArrowRight')move(1)}if(orderModal.classList.contains('open')&&e.key==='Escape')closeOrder()});
