@@ -1,0 +1,1996 @@
+<!DOCTYPE html>
+<html lang="gu">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Invoice Bill</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin:0; padding:12px; background:#eee; color:#111; font-family:Georgia, "Times New Roman", serif; }
+  .toolbar { max-width:900px; margin:0 auto 12px; display:flex; gap:8px; flex-wrap:wrap; align-items:center; font-family:Arial,sans-serif; }
+  button { background:#24476b; color:#fff; border:0; border-radius:5px; padding:10px 14px; cursor:pointer; font-weight:bold; }
+  .hint { font:13px Arial,sans-serif; color:#444; }
+  .toolbar label { font: bold 13px Arial,sans-serif; color:#222; }
+  .toolbar select, .toolbar input { padding:9px 10px; border:1px solid #777; border-radius:5px; background:#fff; font-weight:bold; }
+  .custom-size { display:none; gap:6px; align-items:center; }
+  .custom-size input { width:82px; }
+  .paper { width:100%; max-width:900px; margin:auto; background:#fff; padding:10px; border:1px solid #555; }
+  .header { border:1px solid #333; text-align:center; padding:4px; }
+  .header h1 { margin:0 0 5px; font-size:23px; letter-spacing:1px; }
+  .header p { margin:2px 0; font-size:14px; }
+  .taxline { display:flex; align-items:center; justify-content:center; text-align:center; border-bottom:1px solid #333; padding:7px 2px; font-size:13px; }
+  .taxline strong { display:block; width:100%; text-align:center; font-family:Georgia, "Times New Roman", serif; font-size:18px; font-weight:700; font-variant:small-caps; letter-spacing:2.5px; color:#172b43; text-shadow:0 0.3px 0 #b49a62; }
+  .parties { display:grid; grid-template-columns: 1.35fr 1fr; border:1px solid #333; min-height:110px; }
+  .customer { padding:7px; border-right:1px solid #333; display:flex; flex-direction:column; justify-content:space-between; }
+  .invoice-meta { padding:7px; }
+  .invoice-meta div { margin-bottom:8px; }
+  .caption { font-weight:bold; }
+  table { width:100%; border-collapse:collapse; table-layout:fixed; }
+  th, td { border:1px solid #333; padding:4px 3px; font-size:11px; }
+  th { text-align:center; height:38px; }
+  .items td { height:440px; vertical-align:top; }
+  .items.compact-rows td { height:28px !important; padding-top:3px; padding-bottom:3px; }
+  .items td[contenteditable="true"] { vertical-align:top; }
+  .sumrow td { height:24px; font-weight:bold; }
+  .shipping-row td { height:24px; font-size:11px; font-weight:bold; background:#f7f7f7; }
+  .shipping-row input { padding:2px 4px; border:1px solid #777; border-radius:3px; font:inherit; font-weight:normal; }
+  .sumrow td:nth-child(2) { text-align:center; }
+  .lower { display:grid; grid-template-columns: 2fr 1fr; border:1px solid #333; border-top:0; }
+  .left-lower { min-height:95px; border-right:1px solid #333; }
+  .right-lower { min-height:95px; }
+  .blank-space { height:38px; border-bottom:1px solid #333; }
+  .gstline { padding:5px 7px; min-height:55px; overflow-wrap:anywhere; }
+  .gstline p { margin:4px 0; }
+.grand { padding:8px; border-bottom:1px solid #333; font-weight:bold; }
+  .note { padding:8px; }
+  .terms { display:grid; grid-template-columns:3fr 1fr; border:1px solid #333; border-top:0; min-height:88px; }
+  .conditions { padding:5px 7px; }
+  .conditions ol { margin:3px 0 0; padding-left:17px; font-size:10px; line-height:1.2; }
+  .sign { border-left:1px solid #333; padding:6px; display:flex; flex-direction:column; justify-content:space-between; text-align:right; }
+  .sign { position:relative; }
+  .stamp-signature-image { display:none; max-width:145px; max-height:62px; object-fit:contain; align-self:flex-end; margin:3px 0 2px auto; }
+  #stampSignaturePreview { display:none; max-width:180px; max-height:90px; object-fit:contain; border:1px dashed #aaa; padding:4px; background:#fff; }
+  [contenteditable="true"] { outline:none; min-width:8px; }
+  [contenteditable="true"]:focus { background:#fff6d7; box-shadow:0 0 0 1px #d4a900; }
+  @media(max-width:650px) {
+    body { padding:6px; }
+    .paper { padding:7px; overflow-x:auto; }
+    .parties,.lower,.terms { grid-template-columns:1fr; }
+    .customer,.left-lower { border-right:0; border-bottom:1px solid #333; }
+    .sign { border-left:0; min-height:85px; }
+    table { min-width:560px; }
+  }
+  @page { size:A4 portrait; margin:5mm; }
+  @media print {
+    .paper[data-paper-size="A5"] .items td { height:90px; }
+    .paper[data-paper-size="A5"] .parties { min-height:75px; }
+    .paper[data-paper-size="A5"] .lower { grid-template-columns:2fr 1fr; }
+    .paper[data-paper-size="A5"] .left-lower,
+    .paper[data-paper-size="A5"] .right-lower { min-height:70px; }
+    .paper[data-paper-size="A5"] .terms { min-height:70px; }
+    .paper[data-paper-size="A5"] th,
+    .paper[data-paper-size="A5"] td { font-size:9px; padding:3px 2px; }
+    .paper[data-paper-size="CUSTOM"] .items td { height:90px; }
+  }
+  @media print {
+    html, body { height:100%; }
+    body { padding:0; background:#fff; }
+    .toolbar, #accountsPanel, #businessSettings, #stampSignatureSettings { display:none !important; }
+    .paper { border:0; max-width:none; padding:0; width:100%; }
+    .items td { height:90px; }
+    .paper { break-inside:avoid; page-break-inside:avoid; }
+    .header { padding:3px; }
+    .header h1 { font-size:19px; margin-bottom:2px; }
+    .header p { font-size:11px; margin:1px 0; }
+    .parties { min-height:68px; }
+    .customer,.invoice-meta { padding:4px; font-size:10px; }
+    .invoice-meta div { margin-bottom:4px; }
+    th { height:25px; }
+    th, td { padding:2px; font-size:9px; }
+    .lower { grid-template-columns:2fr 1fr; }
+    .left-lower,.right-lower { min-height:65px; }
+    .blank-space { height:18px; }
+    .gstline { padding:3px 5px; min-height:40px; font-size:9px; }
+    .gstline p { margin:2px 0; }
+    .shipping-row { padding:4px 6px; font-size:10px; }
+    .shipping-row input { font-size:10px; padding:2px; }
+    .grand { padding:5px; font-size:11px; }
+    .note { padding:5px; font-size:10px; }
+    .terms { min-height:58px; }
+    .conditions { padding:3px 5px; font-size:10px; }
+    .conditions ol { font-size:8px; line-height:1.1; margin-top:2px; }
+    .sign { padding:4px; font-size:10px; }
+    .stamp-signature-image { max-width:110px; max-height:48px; }
+    .sign span { font-size:9px !important; }
+    .shipping-row input { appearance:none; -webkit-appearance:none; background:transparent; }
+    * { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+    [contenteditable="true"]:focus { background:transparent; box-shadow:none; }
+    .bill-row-controls { display:none !important; visibility:hidden !important; }
+  }
+
+.bill-row-controls { display:block; }
+@media print {
+  .bill-row-controls,
+  .bill-row-controls *,
+  #billPaper .bill-row-controls {
+    display: none !important;
+    visibility: hidden !important;
+    height: 0 !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+  }
+}
+
+  .format-open { background:#146c43; }
+  #billFormatModal { display:none; position:fixed; inset:0; z-index:9999; background:#e9edf2; overflow:auto; padding:10px; }
+  #billFormatModal.open { display:block; }
+  .format-modal-bar { max-width:900px; margin:0 auto 10px; display:flex; gap:8px; flex-wrap:wrap; align-items:center; font:14px Arial,sans-serif; }
+  .format-editor-tools { max-width:900px; margin:0 auto 10px; padding:12px; background:#fff; border:1px solid #aaa; border-radius:8px; font:14px Arial,sans-serif; }
+  .format-editor-tools input[type=text] { padding:8px; border:1px solid #888; border-radius:5px; min-width:150px; }
+  .format-editor-tools label { display:inline-flex; gap:5px; align-items:center; margin:4px 10px 4px 0; }
+  .custom-bill-cell input { width:100%; min-width:35px; border:0; outline:0; text-align:center; font:inherit; background:transparent; }
+  .custom-bill-cell .calc-value { display:block; text-align:center; }
+  .custom-col-hidden { display:none !important; }
+  @media print {
+    body > *:not(#billFormatModal):not(#billPaper) { display:none !important; }
+    #billFormatModal { display:block !important; position:static !important; inset:auto !important; padding:0 !important; margin:0 !important; overflow:visible !important; background:#fff !important; }
+    #billFormatModal .format-modal-bar, #billFormatModal .format-editor-tools { display:none !important; }
+    #billFormatModal #billPaper { display:block !important; }
+    .custom-col-hidden { display:none !important; }
+  }
+/* Android/Chrome print fix: never depend on a popup/new window. */
+@media print {
+  html, body {
+    width: auto !important;
+    min-height: 0 !important;
+    height: auto !important;
+    overflow: visible !important;
+    background: #fff !important;
+  }
+
+  body.m50-printing > *:not(#billPaper) {
+    display: none !important;
+  }
+
+  body.m50-printing > #billPaper {
+    display: block !important;
+    visibility: visible !important;
+    position: static !important;
+    width: 100% !important;
+    max-width: none !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    box-shadow: none !important;
+    transform: none !important;
+    overflow: visible !important;
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  body.m50-printing #billPaper * {
+    visibility: visible !important;
+  }
+
+  body.m50-printing .bill-row-controls,
+  body.m50-printing .bill-row-controls *,
+  body.m50-printing button,
+  body.m50-printing input[type="file"] {
+    display: none !important;
+  }
+}
+
+/* Ten premium invoice themes */
+.premium-format-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px}
+.premium-format-card{border:2px solid #d9e0e9;border-radius:13px;padding:10px;background:#fff;text-align:left;color:#17283d;cursor:pointer;min-height:176px}
+.premium-format-card.selected{border-color:#b18a43;box-shadow:0 0 0 3px #d9bd8050;background:#fffdf7}
+.premium-format-card .mini-paper{height:112px;border:1px solid var(--fmt-accent);border-top:7px solid var(--fmt-accent);padding:8px;background:var(--fmt-bg);color:var(--fmt-ink);font:10px Georgia,serif}
+.premium-format-card .mini-paper b{display:block;text-align:center;font-size:13px;letter-spacing:1px;margin-bottom:7px}
+.premium-format-card .mini-paper i{display:block;border-top:1px solid var(--fmt-accent);margin:8px 0}
+.premium-format-card strong{display:block;margin-top:8px;font-size:13px}.premium-format-card small{color:#68778a}
+.mini-paper.mini-font-1{font-family:Georgia,serif}.mini-paper.mini-font-2{font-family:Arial,sans-serif;font-weight:700}.mini-paper.mini-font-3{font-family:'Trebuchet MS',sans-serif}.mini-paper.mini-font-4{font-family:Palatino,serif;font-style:italic}.mini-paper.mini-font-5{font-family:Arial,sans-serif;font-weight:900;letter-spacing:1px}.mini-paper.mini-font-6{font-family:Garamond,Georgia,serif;font-style:italic}.mini-paper.mini-font-7{font-family:Verdana,sans-serif}.mini-paper.mini-font-8{font-family:Tahoma,sans-serif;font-weight:700}.mini-paper.mini-font-9{font-family:'Times New Roman',serif;font-style:italic}.mini-paper.mini-font-10{font-family:system-ui,sans-serif;font-weight:900;letter-spacing:1px}
+
+#billPaper[class*="m50-fmt-"]{--fmt-accent:#243b53;--fmt-bg:#fff;--fmt-ink:#17283d}
+#billPaper[class*="m50-fmt-"] .header{border:2px solid var(--fmt-accent);background:var(--fmt-bg);color:var(--fmt-ink);padding:8px}
+#billPaper[class*="m50-fmt-"] .taxline{border-color:var(--fmt-accent);color:var(--fmt-accent)}
+#billPaper[class*="m50-fmt-"] .taxline strong{color:var(--fmt-accent);text-shadow:none}
+#billPaper[class*="m50-fmt-"] th{background:var(--fmt-accent);color:#fff;border-color:var(--fmt-accent)}
+#billPaper[class*="m50-fmt-"] td,#billPaper[class*="m50-fmt-"] .parties,#billPaper[class*="m50-fmt-"] .lower,#billPaper[class*="m50-fmt-"] .terms{border-color:var(--fmt-accent)}
+#billPaper[class*="m50-fmt-"] .grand{background:var(--fmt-bg);color:var(--fmt-accent)}
+#billPaper.m50-fmt-1{--fmt-accent:#9b793e;--fmt-bg:#fffaf0;--fmt-ink:#302719}
+#billPaper.m50-fmt-2{--fmt-accent:#142b49;--fmt-bg:#f4f7fb;--fmt-ink:#142b49}
+#billPaper.m50-fmt-3{--fmt-accent:#176b62;--fmt-bg:#f2faf8;--fmt-ink:#153d39}
+#billPaper.m50-fmt-4{--fmt-accent:#632e49;--fmt-bg:#fff6fa;--fmt-ink:#422033}
+#billPaper.m50-fmt-5{--fmt-accent:#252525;--fmt-bg:#f5f5f5;--fmt-ink:#171717}
+#billPaper.m50-fmt-6{--fmt-accent:#8b4d26;--fmt-bg:#fff7ef;--fmt-ink:#4a2b19}
+#billPaper.m50-fmt-7{--fmt-accent:#344d79;--fmt-bg:#f3f6ff;--fmt-ink:#202f50}
+#billPaper.m50-fmt-8{--fmt-accent:#52633a;--fmt-bg:#f7faef;--fmt-ink:#303d20}
+#billPaper.m50-fmt-9{--fmt-accent:#7652a1;--fmt-bg:#faf6ff;--fmt-ink:#392653}
+#billPaper.m50-fmt-10{--fmt-accent:#a33d3d;--fmt-bg:#fff5f3;--fmt-ink:#512525}
+#billPaper.m50-fmt-1{font-family:Georgia,'Times New Roman',serif}
+#billPaper.m50-fmt-1 .header h1,#billPaper.m50-fmt-1 .taxline{letter-spacing:2px;font-variant:small-caps}
+#billPaper.m50-fmt-2{font-family:Arial,Helvetica,sans-serif}
+#billPaper.m50-fmt-2 .header h1,#billPaper.m50-fmt-2 .taxline{font-weight:800;letter-spacing:1.5px;text-transform:uppercase}
+#billPaper.m50-fmt-3{font-family:'Trebuchet MS',Arial,sans-serif}
+#billPaper.m50-fmt-3 .header h1{font-weight:700;letter-spacing:.8px}
+#billPaper.m50-fmt-4{font-family:'Palatino Linotype',Palatino,serif}
+#billPaper.m50-fmt-4 .header h1,#billPaper.m50-fmt-4 .taxline{font-style:italic;letter-spacing:1.2px}
+#billPaper.m50-fmt-5{font-family:Arial,sans-serif}
+#billPaper.m50-fmt-5 .header h1,#billPaper.m50-fmt-5 .taxline{font-weight:900;letter-spacing:2.4px;text-transform:uppercase}
+#billPaper.m50-fmt-6{font-family:Garamond,Georgia,serif}
+#billPaper.m50-fmt-6 .header h1{font-style:italic;font-weight:700}
+#billPaper.m50-fmt-7{font-family:Verdana,Geneva,sans-serif}
+#billPaper.m50-fmt-7 .header h1,#billPaper.m50-fmt-7 .taxline{font-weight:700;letter-spacing:.6px}
+#billPaper.m50-fmt-8{font-family:Tahoma,Arial,sans-serif}
+#billPaper.m50-fmt-8 .header h1{font-weight:800;letter-spacing:1px}
+#billPaper.m50-fmt-9{font-family:'Times New Roman',Times,serif}
+#billPaper.m50-fmt-9 .header h1,#billPaper.m50-fmt-9 .taxline{font-style:italic;font-variant:small-caps;letter-spacing:1.4px}
+#billPaper.m50-fmt-10{font-family:system-ui,Arial,sans-serif}
+#billPaper.m50-fmt-10 .header h1,#billPaper.m50-fmt-10 .taxline{font-weight:900;letter-spacing:1.8px;text-transform:uppercase}
+#billPaper[class*="m50-fmt-"] .header h1{font-family:inherit}
+#billPaper[class*="m50-fmt-"] .taxline{font-family:inherit}
+
+@media(max-width:520px){.premium-format-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.premium-format-card{padding:7px}}
+</style>
+<style>
+/* Android print fix: invoice is nested inside #billView, not directly under body. */
+@media print {
+  html, body { background:#fff !important; height:auto !important; overflow:visible !important; }
+  body.m50-printing > #billView#billView {
+    display:block !important; visibility:visible !important;
+    position:static !important; width:100% !important; max-width:none !important;
+    margin:0 !important; padding:0 !important; overflow:visible !important;
+  }
+  body.m50-printing #billView > :not(#billPaper) {
+    display:none !important; visibility:hidden !important;
+  }
+  body.m50-printing #billPaper#billPaper {
+    display:block !important; visibility:visible !important;
+    position:static !important; width:100% !important; max-width:none !important;
+    min-height:0 !important; height:auto !important; margin:0 !important;
+    padding:0 !important; border:0 !important; box-shadow:none !important;
+    transform:none !important; overflow:visible !important;
+    break-inside:avoid !important; page-break-inside:avoid !important;
+  }
+  body.m50-printing #billPaper#billPaper * { visibility:visible !important; }
+  body.m50-printing #billPaper .bill-row-controls,
+  body.m50-printing #billPaper .bill-row-controls *,
+  body.m50-printing #billPaper button,
+  body.m50-printing #billPaper input[type="file"] { display:none !important; }
+}
+</style>
+
+<style id="crossDevicePrintStyles">
+@media print {
+  html, body { width:100% !important; height:auto !important; min-height:0 !important; overflow:visible !important; background:#fff !important; }
+  body.m50-challan-printing > *:not(#challanPrintPaper) { display:none !important; }
+  body.m50-challan-printing > #challanPrintPaper { display:block !important; visibility:visible !important; position:static !important; width:100% !important; max-width:none !important; margin:0 !important; padding:8mm !important; border:0 !important; box-shadow:none !important; }
+  body.m50-challan-printing #challanPrintPaper * { visibility:visible !important; }
+  @page { margin:5mm; }
+}
+</style>
+</head>
+<body>
+
+<style id="appShellStyles">
+  body{background:#eef2f7;padding:0;font-family:Arial,sans-serif}
+  .app-top{background:linear-gradient(120deg,#101e32,#24476b);color:#fff;padding:18px 16px 22px}
+  .app-top-inner,.app-main{max-width:1100px;margin:auto}
+  .app-brand{display:flex;align-items:center;gap:12px}
+  .app-logo{width:46px;height:46px;border-radius:14px;background:#d5b878;color:#17283d;display:grid;place-items:center;font-size:22px;font-weight:900}
+  .app-brand h1{font-size:20px;margin:0;letter-spacing:1px}.app-brand p{margin:4px 0 0;color:#d7e2ee;font-size:12px}
+  .app-main{padding:16px}
+  .app-welcome{margin:4px 0 15px}.app-welcome h2{margin:0 0 5px;color:#17283d;font-size:22px}.app-welcome p{margin:0;color:#667487;font-size:13px}
+  .app-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+  .app-tile{border:1px solid #e1e7ef;background:#fff;border-radius:17px;padding:17px 13px;min-height:125px;text-align:left;box-shadow:0 4px 14px #1a2e4610;color:#17283d;display:flex;flex-direction:column;gap:9px}
+  .app-tile:active{transform:scale(.98)}.app-icon{width:43px;height:43px;border-radius:13px;background:#eaf0f7;display:grid;place-items:center;font-size:23px}
+  .app-tile strong{font-size:15px}.app-tile small{font-size:11px;color:#718096}
+  .app-shortcuts{display:flex;gap:8px;flex-wrap:wrap;margin-top:15px}
+  .app-shortcuts button{border-radius:20px;padding:9px 13px;background:#fff;color:#24476b;border:1px solid #d6deea}
+  .app-view{display:none}.app-view.active{display:block}
+  .app-pagebar{max-width:1100px;margin:0 auto 12px;display:flex;align-items:center;gap:10px;padding:0 0 8px}
+  .app-pagebar h2{font-size:19px;margin:0;color:#17283d}.app-back{background:#e4ebf3;color:#203b59}
+  #deliveryPage,#productPage{max-width:900px;margin:0 auto 14px;background:#fff;border-radius:12px;padding:16px;border:1px solid #dce3eb}
+  #deliveryPage input,#deliveryPage textarea{width:100%;padding:11px;border:1px solid #cbd4df;border-radius:8px;margin:5px 0 12px;font:14px Arial}
+  #deliveryPage label{font-size:13px;font-weight:bold;color:#34465b}
+  #challanList{margin-top:16px}
+  .app-footer{display:none!important}
+  body > .toolbar, body > #billFormatModal, body > #businessSettings, body > #stampSignatureSettings, body > #accountsPanel, body > #billPaper{display:none!important}
+  #billView .toolbar{display:flex!important}
+  #billView #billPaper{display:block!important}
+  #accountsView #accountsPanel{display:block!important}
+  #settingsView #businessSettings, #settingsView #stampSignatureSettings{display:block!important}
+  #savedView #savedBillsArea{display:block!important;max-width:900px;margin:0 auto 12px;background:#fff;border:1px solid #dce3eb;border-radius:12px;padding:12px;font-family:Arial,sans-serif}
+  @media(min-width:650px){.app-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.app-top{padding:22px}.app-main{padding:24px}}
+  @media print{#appDashboard,.app-pagebar,.app-footer,#deliveryPage,#productPage{display:none!important}.app-view{display:block!important}}
+</style>
+<header class="app-top" id="appDashboard">
+ <div class="app-top-inner">
+  <div class="app-brand"><div class="app-logo">I</div><div><h1>Invoice Bill</h1><p>BUSINESS MANAGEMENT APP</p></div></div>
+ </div>
+</header>
+<main class="app-main" id="appHome">
+ <div class="app-welcome"><h2>તમારા બિઝનેસમાં સ્વાગત છે 👋</h2><p>બધું કામ એક જ જગ્યાએથી સરળતાથી કરો.</p></div>
+ <div class="app-grid">
+  <button class="app-tile" onclick="startNewBill()"><span class="app-icon">🧾</span><strong>New Bill / નવું બિલ</strong><small>નવું વેચાણ અથવા ખરીદ બિલ બનાવો</small></button>
+  <button class="app-tile" onclick="openAppPage('formats')"><span class="app-icon">💎</span><strong>Bill Format / બિલ ફોર્મેટ</strong><small>10 Premium Luxury Designs પસંદ કરો</small></button>
+  <button class="app-tile" onclick="openAppPage('saved')"><span class="app-icon">📚</span><strong>Saved Bills / જૂના બિલ</strong><small>જૂના બિલ જુઓ, ફેરફાર કરો અથવા PDF</small></button>
+  <button class="app-tile" onclick="openAppPage('challan')"><span class="app-icon">🚚</span><strong>Delivery Challan</strong><small>ડિલિવરી ચલણ બનાવો અને સાચવો</small></button>
+  <button class="app-tile" onclick="openAppPage('productCodes')"><span class="app-icon">🏷️</span><strong>Product Code / પ્રોડક્ટ એન્ટ્રી</strong><small>કોડ, નામ, ML અને કિંમત સેવ કરો; બિલમાં સ્કેન કરો</small></button>
+  <button class="app-tile" onclick="openAppPage('products')"><span class="app-icon">📦</span><strong>Product Sales / વેચાણ</strong><small>બિલ પ્રમાણે વેચાયેલી પ્રોડક્ટ જુઓ</small></button>
+  <button class="app-tile" onclick="openAppPage('accounts')"><span class="app-icon">📊</span><strong>Business Summary</strong><small>કુલ વેચાણ, ખરીદી અને નફો</small></button>
+  <button class="app-tile" onclick="openAppPage('settings')"><span class="app-icon">⚙️</span><strong>Settings</strong><small>કંપની, QR, સહી અને બિલ સેટિંગ</small></button>
+ </div>
+ <div class="app-shortcuts"><button onclick="startNewBill()">＋ નવું બિલ</button><button onclick="openAppPage('saved')">જૂના બિલ જુઓ</button><button onclick="downloadDataBackup()">⬇ Backup</button></div>
+</main>
+ <div class="app-main app-view" id="billFormatView">
+  <div class="app-pagebar"><button class="app-back" onclick="openAppPage('home')">← Home</button><h2>💎 Bill Format Studio</h2></div>
+  <section id="billFormatGallery" style="max-width:1100px;margin:auto;background:#fff;border:1px solid #dce3eb;border-radius:16px;padding:16px">
+   <p style="margin:0 0 14px;color:#667487">તમારી પસંદગીનું પ્રીમિયમ ફોર્મેટ પસંદ કરો અને Save દબાવો. પસંદ કરેલું ફોર્મેટ દરેક નવા બિલમાં આપમેળે રહેશે.</p>
+   <div id="billFormatChoices" class="premium-format-grid"></div>
+   <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:16px"><button onclick="savePremiumBillFormat()" style="background:#146c43;padding:12px 22px">✓ Save Selected Format</button><button type="button" onclick="restoreOriginalBillFormat()" style="background:#805b2a;padding:12px 22px">↶ Restore Old Format / જૂનું ફોર્મેટ પાછું લાવો</button><span id="premiumFormatStatus" style="font-size:13px;color:#237a3b"></span></div>
+  </section>
+ </div>
+<div class="app-main app-view" id="billView">
+ <div class="app-pagebar"><button class="app-back" onclick="openAppPage('home')">← Home</button><h2>નવું બિલ બનાવો</h2><label style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:bold;color:#203b59;flex-wrap:wrap">Bill Type <select id="billTypeQuick" onchange="setBillTypeChoice(this.value)" style="padding:10px;border:2px solid #24476b;border-radius:7px;background:#fff;color:#17283d;font-weight:bold"><option value="selling">Selling Bill / વેચાણ</option><option value="purchase">Purchase Bill / ખરીદ</option></select></label><button type="button" onclick="printCurrentBill()" style="background:#146c43">🖨️ Print / PDF</button></div>
+</div>
+<div class="app-main app-view" id="savedView">
+ <div class="app-pagebar"><button class="app-back" onclick="openAppPage('home')">← Home</button><h2>Saved Bills / જૂના બિલ</h2></div>
+ <section id="savedBillsArea" aria-live="polite"><p style="text-align:center;color:#64748b;padding:20px">Saved Bills લોડ થઈ રહ્યા છે…</p></section>
+</div>
+<div class="app-main app-view" id="challanView">
+ <div class="app-pagebar"><button class="app-back" onclick="openAppPage('home')">← Home</button><h2>Delivery Challan</h2></div>
+ <section id="deliveryPage">
+  <h3 style="margin:0 0 14px">🚚 નવું Delivery Challan</h3>
+  <label>Challan No.</label><input id="challanNo" readonly>
+  <label>Date</label><input id="challanDate" type="date">
+  <label>Customer Name</label><input id="challanCustomer" placeholder="ગ્રાહકનું નામ">
+  <label>Mobile Number</label><input id="challanPhone" placeholder="મોબાઇલ નંબર" inputmode="tel">
+  <label>Delivery Address</label><textarea id="challanAddress" rows="2" placeholder="સરનામું"></textarea>
+  <label>Product / Details</label><textarea id="challanItems" rows="4" placeholder="પ્રોડક્ટનું નામ, ML, Qty વગેરે"></textarea>
+  <label>Remark</label><input id="challanRemark" placeholder="નોંધ (વૈકલ્પિક)">
+  <button onclick="saveChallan()">Save Challan</button> <button onclick="printChallan()" style="background:#146c43">Print / PDF</button>
+  <div id="challanList"></div>
+ </section>
+</div>
+<div class="app-main app-view" id="productsView">
+ <div class="app-pagebar"><button class="app-back" onclick="openAppPage('home')">← Home</button><h2>📦 Product Sales / વેચાણ રિપોર્ટ</h2></div>
+ <section id="productPage"><div id="productSummary" style="margin-top:18px"></div></section>
+</div>
+<div class="app-main app-view" id="productCodeView">
+ <div class="app-pagebar"><button class="app-back" onclick="openAppPage('home')">← Home</button><h2>🏷️ Product Code Manager / પ્રોડક્ટ કોડ</h2></div>
+ <section id="productCodePage" style="max-width:950px;margin:0 auto;background:#fff;border:1px solid #dce3eb;border-radius:14px;padding:16px">
+  <div style="padding:14px;border:1px solid #dce3eb;border-radius:12px;margin-bottom:14px;background:#f8fbff">
+   <h3 style="margin:0 0 10px">＋ નવી પ્રોડક્ટ ઉમેરો</h3>
+   <p style="margin:0 0 10px;color:#526276;font-size:13px">અહીં કોઈપણ પ્રોડક્ટનું નામ, ML અને કિંમત ઉમેરો. Barcode હોય તો કોડ લખો અથવા સ્કેન કરો; કોડ ન હોય તો એપ આપમેળે કોડ બનાવશે.</p>
+   <label style="display:block;font-weight:bold;margin:8px 0 4px">Product Code / Barcode / QR</label>
+   <div style="display:flex;gap:7px;flex-wrap:wrap"><input id="masterProductCode" placeholder="કોડ સ્કેન કરો અથવા જાતે લખો" autocomplete="off" inputmode="text" onkeydown="if(event.key==='Enter'){event.preventDefault();document.getElementById('masterProductName').focus();}" style="flex:1;min-width:180px;padding:10px;border:1px solid #9aa8b8;border-radius:7px"><button type="button" onclick="openProductScanner()">📷 Scan Code</button></div>
+   <small style="display:block;color:#64748b;margin-top:4px">USB/Bluetooth barcode scanner હોય તો કોડ સ્કેન કરો; scanner Enter મોકલે તો Name ફીલ્ડ ખુલશે.</small>
+   <label style="display:block;font-weight:bold;margin:8px 0 4px">Product Name</label><input id="masterProductName" placeholder="પ્રોડક્ટનું નામ" style="width:100%;padding:10px;border:1px solid #9aa8b8;border-radius:7px">
+   <div style="display:flex;gap:8px;flex-wrap:wrap"><div style="flex:1;min-width:120px"><label style="display:block;font-weight:bold;margin:8px 0 4px">ML / Size</label><input id="masterProductMl" placeholder="ઉદા. 50 ML" style="width:100%;padding:10px;border:1px solid #9aa8b8;border-radius:7px"></div><div style="flex:1;min-width:120px"><label style="display:block;font-weight:bold;margin:8px 0 4px">Price ₹</label><input id="masterProductPrice" type="number" min="0" step="0.01" placeholder="કિંમત" style="width:100%;padding:10px;border:1px solid #9aa8b8;border-radius:7px"></div></div>
+   <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px"><button type="button" onclick="saveMasterProduct()" style="background:#146c43">✓ Save Product</button><button type="button" onclick="clearMasterProductForm()" style="background:#687887">Clear</button></div><span id="masterProductStatus" role="status" style="display:block;margin-top:8px;font-size:13px;color:#237a3b"></span>
+  </div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:12px 0"><input id="masterProductSearch" oninput="renderMasterProductList()" placeholder="કોડ અથવા નામથી પ્રોડક્ટ શોધો" style="flex:1;min-width:180px;padding:10px;border:1px solid #9aa8b8;border-radius:7px"><b id="masterProductCount"></b></div>
+  <div id="masterProductList"></div>
+ </section>
+</div>
+<div class="app-main app-view" id="accountsView">
+ <div class="app-pagebar"><button class="app-back" onclick="openAppPage('home')">← Home</button><h2>Business Summary</h2></div>
+</div>
+<div class="app-main app-view" id="settingsView">
+ <div class="app-pagebar"><button class="app-back" onclick="openAppPage('home')">← Home</button><h2>Settings / સેટિંગ</h2></div>
+</div>
+<div class="app-footer">Business Management</div>
+<div class="toolbar">
+  <label for="paperSize">Paper Size:</label>
+  <select id="paperSize" onchange="setPaperSize(this.value)">
+    <option value="A4">A4</option>
+    <option value="A5">A5</option>
+    <option value="CUSTOM">Custom Size</option>
+  </select>
+  <span class="custom-size" id="customSizeFields">
+    <label for="paperWidth">Width (mm)</label><input id="paperWidth" type="number" min="50" max="1000" value="148" oninput="setPaperSize('CUSTOM')">
+    <label for="paperHeight">Height (mm)</label><input id="paperHeight" type="number" min="50" max="1500" value="210" oninput="setPaperSize('CUSTOM')">
+  </span>
+  <button type="button" onclick="printCurrentBill()">🖨️ Print / Save as PDF</button>
+  <label for="billType">Bill Type:</label>
+  <select id="billType" onchange="setBillTypeChoice(this.value)">
+    <option value="selling">Selling Bill / વેચાણ બિલ</option>
+    <option value="purchase">Purchase Bill / ખરીદ બિલ</option>
+  </select>
+  <button onclick="saveCurrentBill()">Save Bill</button>
+  <button type="button" onclick="printCurrentBill()" style="background:#146c43">🖨️ Print New Bill / PDF</button>
+  <button onclick="showSavedBills()">Saved Bills</button>
+  <button onclick="clearEditable()">Clear entered details</button>
+  <span class="hint">A4, A5 અથવા Custom Size પસંદ કરો. Custom માટે Width અને Height mm માં લખો.</span>
+</div>
+
+<div id="billFormatModal" aria-hidden="true">
+  <div class="format-modal-bar">
+    <b>Bill Format Editor</b>
+    <button type="button" onclick="closeBillFormatEditor()" style="background:#555">Close / બંધ કરો</button>
+    <button type="button" onclick="saveBillFormat()" style="background:#146c43">Save Bill Format / ફોર્મેટ સેવ</button>
+    <button type="button" onclick="window.print()">Print Bill / PDF</button>
+  </div>
+  <div class="format-editor-tools">
+    <b>નવો કોલમ ઉમેરો</b>
+    <p style="margin:6px 0;color:#444">કોલમનું નામ લખો. GST અથવા GST % લખશો તો ફક્ત GST % અને GST Amount કોલમ બનશે; GST Amount આપમેળે ગણાશે. સામાન્ય કોલમમાં દરેક પ્રોડક્ટની રકમ લખો. નામના અંતે ડોટ (.) મૂકશો તો તે કોલમ પ્રિન્ટમાં નહીં આવે અને કુલમાં ગણાશે નહીં.</p>
+    <input id="newBillColumnName" type="text" placeholder="જેમ કે GST % / Discount / Extra">
+    <button type="button" onclick="addCustomBillColumn()">+ Add Column</button>
+    <div id="customColumnsManager" style="margin-top:9px"></div>
+    <small>ફોર્મેટ સેવ કર્યા પછી આ કોલમ નવા બિલમાં પણ રહેશે. દરેક કોલમની કિંમત બિલના કુલમાં આપમેળે ઉમેરાશે, સિવાય કે નામના અંતે ડોટ (.) હોય.</small>
+  </div>
+  <div id="billFormatStage"></div>
+</div>
+
+<section id="businessSettings" style="max-width:900px;margin:0 auto 12px;background:#fff;border:1px solid #bbb;border-radius:8px;padding:12px;font-family:Arial,sans-serif;">
+  <h2 style="margin:0 0 10px;font-size:19px;">Company Details / કંપનીની વિગતો</h2>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:9px;">
+    <label style="display:grid;gap:5px;font-weight:bold;">Company Name
+      <input id="companyNameSetting" type="text" placeholder="તમારી કંપનીનું નામ લખો" style="padding:9px;border:1px solid #888;border-radius:5px;">
+    </label>
+    <label style="display:grid;gap:5px;font-weight:bold;">Address
+      <input id="companyAddressSetting" type="text" placeholder="તમારી કંપનીનું સરનામું લખો" style="padding:9px;border:1px solid #888;border-radius:5px;">
+    </label>
+    <label style="display:grid;gap:5px;font-weight:bold;">Mobile Number
+      <input id="companyPhoneSetting" type="text" placeholder="તમારો મોબાઇલ નંબર લખો" style="padding:9px;border:1px solid #888;border-radius:5px;">
+    </label>
+    <label style="display:grid;gap:5px;font-weight:bold;">GST Number / GSTIN (Optional)
+      <input id="companyGstSetting" type="text" maxlength="15" placeholder="Enter GSTIN or leave blank" style="padding:9px;border:1px solid #888;border-radius:5px;text-transform:uppercase;">
+    </label>
+  </div>
+  <button type="button" onclick="saveCompanyDetails()" style="margin-top:10px;">Save Company Details / વિગતો સેવ કરો</button>
+  <button id="gstToggleButton" type="button" onclick="toggleGSTColumn()" style="display:block;margin-top:10px;padding:10px 16px;border:0;border-radius:6px;background:#146c43;color:#fff;cursor:pointer;">+ GST Add કરો</button><small id="gstToggleHint" style="display:block;margin-top:5px;color:#555">GST ઉમેરવા બટન દબાવો; ફરી દબાવશો તો GST દૂર થશે.</small>
+  <div style="margin-top:12px;padding-top:10px;border-top:1px solid #ddd;">
+    <b>Payment QR બદલો / Change Payment QR</b><br>
+    <input id="paymentQrFile" type="file" accept="image/png,image/jpeg,image/webp" onchange="loadPaymentQR(this)" style="margin-top:7px;max-width:100%">
+    <button type="button" onclick="resetPaymentQR()" style="background:#8a3030;margin-top:7px">મારો QR દૂર કરો</button>
+    <span id="paymentQrStatus" style="font-size:12px;color:#237a3b;margin-left:8px"></span>
+    <p style="font-size:12px;color:#555;margin:5px 0 0">તમારો પોતાનો payment QR upload કરો. આ QR ફક્ત આ ફોન/બ્રાઉઝરમાં સેવ થશે અને તમારા બિલમાં જ દેખાશે.</p>
+  </div>
+  <p style="font-size:12px;color:#555;margin:8px 0 0;">દરેક વપરાશકર્તા અહીં પોતાની કંપનીનું નામ, સરનામું અને મોબાઇલ નંબર લખીને સેવ કરે. સેવ કર્યા પછી નવા બિલ અને ડિલિવરી ચલણમાં આ વિગતો આવશે. પહેલાં સેવ કરેલા જૂના બિલમાં ફેરફાર નહીં થાય.</p>
+</section>
+
+<section id="stampSignatureSettings" style="max-width:900px;margin:0 auto 12px;background:#fff;border:1px solid #bbb;border-radius:8px;padding:12px;font-family:Arial,sans-serif;">
+  <h2 style="margin:0 0 10px;font-size:19px;">Stamp / Signature / સ્ટેમ્પ-સહી</h2>
+  <p style="font-size:13px;color:#555;margin:0 0 9px;">તમારા સ્ટેમ્પ અથવા સહીનો ફોટો (PNG/JPG) પસંદ કરો. તે બિલના Authorised Signatory વિભાગમાં દેખાશે અને પ્રિન્ટમાં પણ આવશે.</p>
+  <input id="stampSignatureFile" type="file" accept="image/png,image/jpeg,image/webp" onchange="loadStampSignature(this)" style="max-width:100%;padding:7px;">
+  <div style="margin-top:8px;"><img id="stampSignaturePreview" alt="Stamp/signature preview"></div>
+  <button type="button" onclick="removeStampSignature()" style="margin-top:9px;background:#8a3030;">Remove Stamp / Signature</button>
+  <span id="stampSignatureStatus" style="font-size:12px;color:#237a3b;margin-left:8px;"></span>
+</section>
+
+
+<section id="accountsPanel" style="max-width:1000px;margin:0 auto 12px;background:#fff;border:1px solid #dbe3ed;border-radius:14px;padding:14px;font-family:Arial,sans-serif;">
+  <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+    <div><h2 style="margin:0;font-size:20px;color:#172b43">Business Performance</h2><p style="margin:5px 0 0;color:#64748b;font-size:12px">તમારા સેવ કરેલા બિલ પ્રમાણે નફા-નુકસાનની પ્રગતિ</p></div>
+    <span id="profitChartStatus" style="font-size:12px;color:#64748b">બિલ સેવ થયા પછી જ ગણતરી દેખાશે</span>
+  </div>
+  <div id="profitChartStats" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin:14px 0">
+    <div style="background:#f1f5f9;border-radius:10px;padding:12px"><small style="color:#64748b">કુલ નફો / નુકસાન</small><div id="chartNetValue" style="font-size:21px;font-weight:800;color:#172b43;margin-top:4px">—</div></div>
+    <div style="background:#f1f5f9;border-radius:10px;padding:12px"><small style="color:#64748b">છેલ્લી પ્રગતિ</small><div id="chartLastValue" style="font-size:21px;font-weight:800;color:#172b43;margin-top:4px">—</div></div>
+  </div>
+  <div style="border:1px solid #e2e8f0;border-radius:12px;padding:8px 6px 2px;background:linear-gradient(180deg,#fbfdff,#fff)">
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 8px 8px"><b style="font-size:13px;color:#334155">Profit / Loss Trend</b><span style="font-size:11px;color:#64748b">Cumulative • ₹</span></div>
+    <div id="profitLossChart" style="width:100%;min-height:240px;overflow:hidden"><div style="padding:55px 10px;text-align:center;color:#64748b;font-size:13px">હજુ ચાર્ટ બતાવવા માટે બિલ સેવ કરો.</div></div>
+  </div>
+  <div style="display:flex;gap:14px;flex-wrap:wrap;margin:10px 4px 2px;font-size:11px;color:#64748b"><span>🟢 નફો વધે છે</span><span>🔴 નુકસાન / ઘટાડો</span><span>— શૂન્યની રેખા</span></div>
+  <p style="font-size:11px;color:#64748b;line-height:1.5;margin:10px 2px 0">ચાર્ટ સેવ કરેલા બિલના ક્રમ અને તારીખ પ્રમાણે બને છે. Selling Bill માં દાખલ કરેલો ખરીદ ખર્ચ બાદ કરીને નફો ગણાય છે; Purchase Bill ખર્ચ તરીકે ગણાય છે.</p>
+</section>
+
+<main class="paper" id="billPaper" data-paper-size="A4">
+  <header class="header">
+    <h1 contenteditable="true"></h1>
+    <p contenteditable="true"></p>
+    <p contenteditable="true"></p>
+    <p id="companyGstDisplay" style="display:none;font-weight:bold;">GSTIN: <span></span></p>
+  </header>
+
+  <div class="taxline">
+    <strong contenteditable="true">TAX INVOICE</strong>
+  </div>
+
+  <section class="parties">
+    <div class="customer">
+      <div><b>M/s. :</b> <span contenteditable="true">&nbsp;</span></div>
+      <div style="display:flex; gap:5px; align-items:flex-start;"><b>Address :</b> <span contenteditable="true" style="flex:1; min-height:34px; display:inline-block;">&nbsp;</span></div>
+      <div><b>Place of Supply :</b> <span contenteditable="true">24-Gujarat</span></div>
+    </div>
+    <div class="invoice-meta">
+      <div><b>Invoice No. :</b> <span id="invoiceNo">GT/01</span></div>
+      <div><b>Date :</b> <span id="invoiceDate"></span></div>
+    </div>
+  </section>
+
+  <div class="bill-row-controls" style="margin:8px 0;display:flex;gap:8px;align-items:center;justify-content:flex-end;flex-wrap:wrap;">
+    <input id="billProductCodeInput" type="text" autocomplete="off" inputmode="text" placeholder="Barcode scanner થી કોડ સ્કેન કરો" aria-label="Product barcode" onkeydown="if(event.key==='Enter'){event.preventDefault();addBillProductByCode();}" style="flex:1;min-width:190px;max-width:320px;padding:9px;border:1px solid #9aa8b8;border-radius:7px;font-size:14px;">
+    <button type="button" onclick="addBillProductByCode()" style="background:#245b86;padding:7px 12px;">✓ Add Code</button>
+    <button type="button" onclick="openBillProductScanner()" style="background:#146c43;padding:7px 12px;">📷 Scan Product / પ્રોડક્ટ સ્કેન</button>
+    <button type="button" onclick="addBillProductRow()" style="padding:7px 12px;">+ Add Product / બિલમાં પ્રોડક્ટ ઉમેરો</button>
+  </div>
+  <table>
+    <colgroup>
+      <col style="width:7%"><col style="width:36%"><col style="width:13%">
+      <col style="width:12%"><col style="width:14%"><col style="width:18%">
+    </colgroup>
+    <thead>
+      <tr>
+        <th>Sr.</th><th>Product Name</th><th id="mlHeader" contenteditable="true" title="અહીં ML કોલમનું નામ બદલો">ML</th><th>Qty</th>
+        <th>Rate</th><th>Amount</th>
+      </tr>
+    </thead>
+    <tbody class="items">
+      <tr class="item-row">
+        <td class="sr">1</td>
+        <td contenteditable="true" class="product">&nbsp;</td>
+        <td contenteditable="true" class="ml">&nbsp;</td>
+        <td contenteditable="true" class="qty"></td>
+        <td contenteditable="true" class="rate"></td>
+        <td class="amount">0.00</td>
+      </tr>
+    </tbody>
+    <tfoot>
+      <tr class="shipping-row">
+        <td colspan="4"><label for="shippingCharge"><b>Shipping Charge</b></label></td>
+        <td colspan="2" style="text-align:center"><input id="shippingCharge" type="number" min="0" step="0.01" value="0" oninput="calculateTotals()" style="width:90%;max-width:110px;text-align:center"></td>
+      </tr>
+      <tr class="sumrow">
+        <td colspan="4">Total</td>
+        <td colspan="2" id="itemsTotal">0.00</td>
+      </tr>
+    </tfoot>
+  </table>
+
+  <section class="lower">
+    <div class="left-lower">
+      <div class="blank-space"></div>
+      <div class="gstline">
+        <p><b>Bill Amount :</b> <span id="billAmount">0.00</span></p>
+        <p><b>Bill Amount (In Words) :</b> <span id="billAmountWords">Zero Rupees Only</span></p>
+      </div>
+    </div>
+    <div class="right-lower">
+      <div class="payment-qr" id="paymentQrOnBill" style="display:none">
+        <b>Scan to Pay</b>
+        <img alt="Your Payment QR Code" src="" style="display:none">
+      </div>
+      <div class="grand">Grand Total <span id="grandTotal" style="float:right">0.00</span></div>
+      <div class="note"><b>Note :</b> <span contenteditable="true">&nbsp;</span></div>
+    </div>
+  </section>
+
+  <section class="terms">
+    <div class="conditions">
+      <b>Terms &amp; Condition :</b>
+      <ol>
+        <li contenteditable="true">Goods once sold will not be taken back.</li>
+        <li contenteditable="true">Interest @18% p.a. will be charged if payment is not made within due date.</li>
+        <li contenteditable="true">Our risk and responsibility ceases as soon as the goods leave our premises.</li>
+        <li contenteditable="true">Subject to 'GONDAL' Jurisdiction only. &nbsp; E. &amp; O.E.</li>
+      </ol>
+    </div>
+    <div class="sign">
+      <b contenteditable="true">For,</b>
+      <img id="stampSignatureOnBill" class="stamp-signature-image" alt="Stamp / Signature">
+      <span style="font-size:12px" contenteditable="true">(Authorised Signatory)</span>
+    </div>
+  </section>
+</main>
+
+<div id="productScanModal" style="display:none;position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.78);padding:16px;align-items:center;justify-content:center">
+ <div style="background:#fff;border-radius:14px;padding:14px;width:min(520px,100%);max-height:92vh;overflow:auto;font-family:Arial,sans-serif">
+  <div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><b id="productScanTitle">Scan Product Code</b><button type="button" onclick="closeProductScanner()" style="background:#7b2730">✕ Close</button></div>
+  <video id="productScanVideo" playsinline autoplay muted style="display:none;width:100%;max-height:48vh;object-fit:cover;background:#111;border-radius:9px;margin-top:12px"></video>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px"><button id="productTorchButton" type="button" onclick="toggleProductTorch()" style="display:inline-block;background:#475569">🔦 Torch</button></div>
+  <p id="productScanMessage" style="font-size:13px;color:#526276">કેમેરા સામે barcode અથવા QR code રાખો. Torch ફોન સપોર્ટ કરતો હોય તો ચાલુ થશે. USB/Bluetooth scanner માટે Product Code ખાનું વાપરો.</p>
+ </div>
+</div>
+<script src="https://unpkg.com/@zxing/library@0.21.3/umd/index.min.js" defer></script>
+<script>
+const money = n => (Number.isFinite(n) ? n : 0).toFixed(2);
+const numeric = el => {
+  const value = (el?.textContent || '').replace(/,/g, '').replace(/[^\d.-]/g, '').trim();
+  const parsed = parseFloat(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+};
+
+function setPaperSize(size) {
+  const paper = document.getElementById('billPaper');
+  const selector = document.getElementById('paperSize');
+  const customFields = document.getElementById('customSizeFields');
+  const isCustom = size === 'CUSTOM';
+  const selected = isCustom ? 'CUSTOM' : (size === 'A5' ? 'A5' : 'A4');
+  paper.dataset.paperSize = selected;
+  selector.value = selected;
+  customFields.style.display = isCustom ? 'inline-flex' : 'none';
+
+  let pageStyle = document.getElementById('dynamicPageSize');
+  if (!pageStyle) {
+    pageStyle = document.createElement('style');
+    pageStyle.id = 'dynamicPageSize';
+    document.head.appendChild(pageStyle);
+  }
+  if (isCustom) {
+    const width = Math.min(1000, Math.max(50, Number(document.getElementById('paperWidth').value) || 148));
+    const height = Math.min(1500, Math.max(50, Number(document.getElementById('paperHeight').value) || 210));
+    pageStyle.textContent = '@page { size: ' + width + 'mm ' + height + 'mm; margin: 5mm; }';
+    paper.style.setProperty('--custom-page-height', height + 'mm');
+    try { localStorage.setItem('patelMobilePaperSize', 'CUSTOM'); localStorage.setItem('patelMobilePaperWidth', width); localStorage.setItem('patelMobilePaperHeight', height); } catch (e) {}
+  } else {
+    pageStyle.textContent = '@page { size: ' + selected + ' portrait; margin: 5mm; }';
+    paper.style.removeProperty('--custom-page-height');
+    try { localStorage.setItem('patelMobilePaperSize', selected); } catch (e) {}
+  }
+}
+
+const COMPANY_SETTINGS_KEY = 'companyDetailsV2';
+function getCompanyDetails() {
+  const defaults = { name: '', address: '', phone: '', gstin: '' };
+  try { return {...defaults, ...(JSON.parse(localStorage.getItem(COMPANY_SETTINGS_KEY) || '{}'))}; }
+  catch (e) { return defaults; }
+}
+function applyCompanyDetails(details) {
+  const header = document.querySelector('.header');
+  header.querySelector('h1').textContent = details.name || '';
+  header.querySelector('p:nth-of-type(1)').textContent = details.address || '';
+  header.querySelector('p:nth-of-type(2)').textContent = details.phone || '';
+  const gstLine = document.getElementById('companyGstDisplay');
+  if (gstLine) {
+    const gstValue = String(details.gstin || '').trim().toUpperCase();
+    gstLine.querySelector('span').textContent = gstValue;
+    gstLine.style.display = gstValue ? 'block' : 'none';
+  }
+  const sign = document.querySelector('.sign b');
+  if (sign) sign.textContent = details.name ? 'For, ' + details.name : 'For,';
+}
+function loadCompanyDetails() {
+  const details = getCompanyDetails();
+  document.getElementById('companyNameSetting').value = details.name;
+  document.getElementById('companyAddressSetting').value = details.address;
+  document.getElementById('companyPhoneSetting').value = details.phone;
+  document.getElementById('companyGstSetting').value = details.gstin || '';
+  applyCompanyDetails(details);
+}
+function saveCompanyDetails() {
+  const details = {
+    name: document.getElementById('companyNameSetting').value.trim(),
+    address: document.getElementById('companyAddressSetting').value.trim(),
+    phone: document.getElementById('companyPhoneSetting').value.trim(),
+    gstin: document.getElementById('companyGstSetting').value.trim().toUpperCase()
+  };
+  if (!details.name) { alert('કંપનીનું નામ લખો.'); return; }
+  try {
+    localStorage.setItem(COMPANY_SETTINGS_KEY, JSON.stringify(details));
+    applyCompanyDetails(details);
+    alert('કંપનીની નવી વિગતો સેવ થઈ ગઈ. હવે પછીના બિલમાં આ વિગતો આવશે. જૂના સેવ કરેલા બિલ બદલાશે નહીં.');
+  } catch (e) { alert('વિગતો સેવ થઈ શકી નથી.'); }
+}
+
+
+const BILL_FORMAT_KEY = 'm50BillFormatColumnsV1';
+let billFormatOriginalParent = null;
+let billFormatOriginalNext = null;
+
+function getCustomBillColumns() {
+  try {
+    let cols = JSON.parse(localStorage.getItem(BILL_FORMAT_KEY) || '[]');
+    if (!Array.isArray(cols)) return [];
+    cols = cols.filter(c => c && c.id && c.name);
+    // જૂના ખાલી/મેન્યુઅલ "GST" કોલમને GST % માં ફેરવો,
+    // જેથી અલગ ખાલી GST કોલમ ન દેખાય.
+    const legacyGst = cols.find(c => /^gst$/i.test(String(c.name).trim()));
+    const gstCol = cols.find(c => c.type === 'gst');
+    if (legacyGst && !gstCol) {
+      legacyGst.name = 'GST %';
+      legacyGst.type = 'gst';
+      legacyGst.hidden = false;
+      legacyGst.includeInTotal = false;
+    } else if (legacyGst && gstCol && legacyGst.id !== gstCol.id) {
+      cols = cols.filter(c => c.id !== legacyGst.id);
+    }
+    const activeGst = cols.find(c => c.type === 'gst');
+    if (activeGst) {
+      activeGst.name = 'GST %';
+      activeGst.hidden = false;
+      activeGst.includeInTotal = false;
+      // GST is a pair of columns: editable GST % and automatic GST Amount.
+    }
+    localStorage.setItem(BILL_FORMAT_KEY, JSON.stringify(cols));
+    return cols;
+  } catch (e) { return []; }
+}
+function setCustomBillColumns(cols) {
+  localStorage.setItem(BILL_FORMAT_KEY, JSON.stringify(cols));
+}
+function openBillFormatEditor() {
+  const modal = document.getElementById('billFormatModal');
+  const paper = document.getElementById('billPaper');
+  if (!modal || !paper) { alert('Bill Format Editor ખોલી શકાય નથી. Bill section ફરી લોડ કરો.'); return; }
+  if (!billFormatOriginalParent) {
+    billFormatOriginalParent = paper.parentNode;
+    billFormatOriginalNext = paper.nextSibling;
+  }
+  document.getElementById('billFormatStage').appendChild(paper);
+  modal.style.display = 'block';
+  modal.classList.add('open');
+  modal.setAttribute('aria-hidden','false');
+  renderCustomColumnsManager();
+  window.scrollTo(0,0);
+}
+function closeBillFormatEditor() {
+  const modal = document.getElementById('billFormatModal');
+  const paper = document.getElementById('billPaper');
+  if (billFormatOriginalParent) {
+    if (billFormatOriginalNext && billFormatOriginalNext.parentNode === billFormatOriginalParent) {
+      billFormatOriginalParent.insertBefore(paper, billFormatOriginalNext);
+    } else {
+      billFormatOriginalParent.appendChild(paper);
+    }
+  }
+  modal.classList.remove('open');
+  modal.style.display = 'none';
+  modal.setAttribute('aria-hidden','true');
+}
+function addCustomBillColumn() {
+  const input = document.getElementById('newBillColumnName');
+  const raw = input.value.trim();
+  if (!raw) { alert('કોલમનું નામ લખો.'); return; }
+  const isGst = /^gst(?:\s*%?)?$/i.test(raw);
+  const cols = getCustomBillColumns();
+  if (isGst && cols.some(c => c.type === 'gst')) { alert('GST કોલમ પહેલેથી ઉમેરેલો છે.'); return; }
+  const id = 'c' + Date.now().toString(36);
+  if (isGst) {
+    cols.push({id, name:'GST %', type:'gst', hidden:false});
+  } else {
+    cols.push({id, name:raw, type:'amount', hidden:/\.$/.test(raw), includeInTotal:!/\.$/.test(raw)});
+  }
+  setCustomBillColumns(cols);
+  applyCustomBillColumns();
+  renderCustomColumnsManager();
+  input.value = '';
+  calculateTotals();
+  scheduleAutoBackup();
+}
+function removeCustomBillColumn(id) {
+  if (!confirm('આ કોલમ કાઢી નાખવો છે?')) return;
+  setCustomBillColumns(getCustomBillColumns().filter(c => c.id !== id));
+  applyCustomBillColumns();
+  renderCustomColumnsManager();
+  calculateTotals();
+  scheduleAutoBackup();
+}
+function toggleGSTColumn() {
+  let cols = getCustomBillColumns();
+  const existing = cols.find(c => c.type === 'gst');
+  if (existing) {
+    cols = cols.filter(c => c.type !== 'gst');
+    setCustomBillColumns(cols);
+    applyCustomBillColumns();
+    calculateTotals();
+    scheduleAutoBackup();
+    updateGSTToggleButton();
+    alert('GST કોલમ બિલમાંથી દૂર થઈ ગયો.');
+  } else {
+    cols.push({id:'gst_' + Date.now().toString(36), name:'GST %', type:'gst', hidden:false, includeInTotal:false});
+    setCustomBillColumns(cols);
+    applyCustomBillColumns();
+    calculateTotals();
+    scheduleAutoBackup();
+    updateGSTToggleButton();
+    alert('GST % અને GST Amount કોલમ બિલમાં ઉમેરાઈ ગયા.');
+  }
+}
+function updateGSTToggleButton() {
+  const btn = document.getElementById('gstToggleButton');
+  if (!btn) return;
+  const active = getCustomBillColumns().some(c => c.type === 'gst');
+  btn.textContent = active ? '− GST Remove કરો' : '+ GST Add કરો';
+  btn.style.background = active ? '#9a3030' : '#146c43';
+}
+
+function renderCustomColumnsManager() {
+  const box = document.getElementById('customColumnsManager');
+  const cols = getCustomBillColumns();
+  box.innerHTML = cols.length ? cols.map(c =>
+    '<div style="display:flex;gap:8px;align-items:center;margin:5px 0;flex-wrap:wrap"><b>'+escapeHtml(c.name)+'</b> <small>'+
+    (c.type === 'gst' ? 'GST % + GST Amount (auto)' : (c.hidden ? 'Print માં નહીં આવે / Total માં નહીં ગણાય' : 'Total માં ગણાશે'))+
+    '</small><button type="button" style="padding:5px 8px;background:#9a3030" onclick="removeCustomBillColumn(\''+c.id+'\')">Remove</button></div>'
+  ).join('') : '<small>હજુ કોઈ વધારાનો કોલમ નથી.</small>';
+}
+function applyCustomBillColumns() {
+  const cols = getCustomBillColumns();
+  const table = document.querySelector('#billPaper table');
+  const head = table?.querySelector('thead tr');
+  const body = table?.querySelector('tbody.items');
+  if (!head || !body) return;
+  // Remove old custom cells before rebuilding the configured columns.
+  head.querySelectorAll('[data-custom-col]').forEach(el => el.remove());
+  body.querySelectorAll('[data-custom-col]').forEach(el => el.remove());
+  const amountHead = [...head.children].find(th => th.textContent.trim() === 'Amount');
+  cols.forEach(c => {
+    const th = document.createElement('th');
+    th.dataset.customCol = c.id;
+    th.textContent = c.type === 'gst' ? 'GST %' : c.name;
+    if (c.hidden) th.classList.add('custom-col-hidden');
+    if (amountHead) head.insertBefore(th, amountHead);
+    body.querySelectorAll('tr.item-row').forEach(row => {
+      const td = document.createElement('td');
+      td.dataset.customCol = c.id;
+      td.className = 'custom-bill-cell';
+      if (c.hidden) td.classList.add('custom-col-hidden');
+      if (c.type === 'gst') {
+        td.innerHTML = '<input type="number" min="0" max="100" step="0.01" class="custom-col-input gst-percent" data-col-id="'+c.id+'" placeholder="%" oninput="calculateTotals()">';
+      } else {
+        td.innerHTML = '<input type="number" min="0" step="0.01" class="custom-col-input" data-col-id="'+c.id+'" placeholder="0.00" oninput="calculateTotals()">';
+      }
+      if (amountHead) row.insertBefore(td, row.querySelector('.amount'));
+      else row.appendChild(td);
+    });
+  });
+  // Add calculated GST amount beside the GST percentage.
+  const gst = cols.find(c => c.type === 'gst');
+  if (gst) {
+    const gstHead = document.createElement('th');
+    gstHead.dataset.customCol = gst.id + '_amount';
+    gstHead.textContent = 'GST Amount';
+    const gstPercentHead = head.querySelector('[data-custom-col="'+gst.id+'"]');
+    if (gstPercentHead) gstPercentHead.after(gstHead);
+    body.querySelectorAll('tr.item-row').forEach(row => {
+      const td = document.createElement('td');
+      td.dataset.customCol = gst.id + '_amount';
+      td.className = 'custom-bill-cell gst-amount-cell';
+      td.innerHTML = '<span class="calc-value">0.00</span>';
+      const percentCell = row.querySelector('[data-custom-col="'+gst.id+'"]');
+      if (percentCell) percentCell.after(td);
+    });
+  }
+  // Extend colgroup to keep custom fields visible in the printed invoice.
+  const colgroup = table.querySelector('colgroup');
+  if (colgroup) {
+    colgroup.innerHTML = '<col style="width:6%"><col style="width:27%"><col style="width:9%"><col style="width:9%"><col style="width:10%">' +
+      cols.map(c => '<col style="width:8%"'+(c.hidden?' class="custom-col-hidden"':'')+'>').join('') +
+      (gst ? '<col style="width:9%">' : '') + '<col style="width:14%">';
+  }
+}
+function updateCustomBillRowValues(row) {
+  const cols = getCustomBillColumns();
+  const base = numeric(row.querySelector('.qty')) * numeric(row.querySelector('.rate'));
+  let extraTotal = 0;
+  cols.forEach(c => {
+    const input = row.querySelector('.custom-col-input[data-col-id="'+c.id+'"]');
+    if (c.type === 'gst') {
+      const percent = Math.max(0, Number(input?.value) || 0);
+      const gstAmount = base * percent / 100;
+      const out = row.querySelector('[data-custom-col="'+c.id+'_amount"] .calc-value');
+      if (out) out.textContent = money(gstAmount);
+      extraTotal += gstAmount;
+    } else {
+      const value = Math.max(0, Number(input?.value) || 0);
+      if (c.includeInTotal && !c.hidden) extraTotal += value;
+    }
+  });
+  return extraTotal;
+}
+
+function saveBillFormat() {
+  try {
+    setCustomBillColumns(getCustomBillColumns());
+    applyCustomBillColumns();
+    calculateTotals();
+    alert('Bill Format સફળતાપૂર્વક સેવ થયું. હવે નવા બિલમાં પણ આ કોલમ રહેશે.');
+  } catch (e) { alert('Bill Format સેવ થઈ શક્યું નથી.'); }
+}
+
+function setAutomaticInvoiceDetails() {
+  const key = 'patelMobileNextInvoiceNumber';
+  let next = 1;
+  try {
+    next = parseInt(localStorage.getItem(key) || '1', 10);
+    if (!Number.isFinite(next) || next < 1) next = 1;
+    localStorage.setItem(key, String(next + 1));
+  } catch (e) {
+    next = Math.max(1, Number(window.__fallbackInvoiceNumber || 1));
+    window.__fallbackInvoiceNumber = next + 1;
+  }
+  const invoiceEl = document.getElementById('invoiceNo');
+  const dateEl = document.getElementById('invoiceDate');
+  if (invoiceEl) invoiceEl.textContent = 'GT/' + String(next).padStart(2, '0');
+  if (dateEl) dateEl.textContent = new Intl.DateTimeFormat('en-GB').format(new Date());
+}
+
+function numberToWordsIndian(value) {
+  const ones = ['Zero','One','Two','Three','Four','Five','Six','Seven','Eight','Nine',
+    'Ten','Eleven','Twelve','Thirteen','Fourteen','Fifteen','Sixteen','Seventeen',
+    'Eighteen','Nineteen'];
+  const tens = ['','','Twenty','Thirty','Forty','Fifty','Sixty','Seventy','Eighty','Ninety'];
+
+  function underThousand(n) {
+    let words = '';
+    if (n >= 100) {
+      words += ones[Math.floor(n / 100)] + ' Hundred';
+      n %= 100;
+      if (n) words += ' ';
+    }
+    if (n >= 20) {
+      words += tens[Math.floor(n / 10)];
+      n %= 10;
+      if (n) words += ' ' + ones[n];
+    } else if (n > 0) {
+      words += ones[n];
+    }
+    return words;
+  }
+
+  let amount = Math.round((Number(value) + Number.EPSILON) * 100) / 100;
+  if (!Number.isFinite(amount) || amount < 0) amount = 0;
+  let rupees = Math.floor(amount);
+  const paise = Math.round((amount - rupees) * 100);
+  if (paise === 100) { rupees += 1; }
+
+  if (rupees === 0) {
+    // Keep "Zero" for a zero amount; otherwise build Indian place values.
+  }
+  const parts = [];
+  const crore = Math.floor(rupees / 10000000); rupees %= 10000000;
+  const lakh = Math.floor(rupees / 100000); rupees %= 100000;
+  const thousand = Math.floor(rupees / 1000); rupees %= 1000;
+  const hundredPart = rupees;
+
+  if (crore) parts.push(underThousand(crore) + ' Crore');
+  if (lakh) parts.push(underThousand(lakh) + ' Lakh');
+  if (thousand) parts.push(underThousand(thousand) + ' Thousand');
+  if (hundredPart) parts.push(underThousand(hundredPart));
+
+  let words = parts.join(' ') || 'Zero';
+  words += ' Rupees';
+  const finalPaise = Math.round((amount - Math.floor(amount)) * 100);
+  if (finalPaise > 0) words += ' and ' + underThousand(finalPaise) + ' Paise';
+  return words + ' Only';
+}
+
+function parseBillNumber(value) {
+  if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
+  const cleaned = String(value ?? '').replace(/[,₹\s]/g, '').replace(/[^0-9.\-]/g, '');
+  const n = Number(cleaned);
+  return Number.isFinite(n) ? n : 0;
+}
+
+function calculateTotals() {
+  let grandTotal = 0;
+  document.querySelectorAll('.item-row').forEach((row, index) => {
+    row.querySelector('.sr').textContent = index + 1;
+    const amount = numeric(row.querySelector('.qty')) * numeric(row.querySelector('.rate'));
+    row.querySelector('.amount').textContent = money(amount);
+    grandTotal += amount + updateCustomBillRowValues(row);
+  });
+  document.getElementById('itemsTotal').textContent = money(grandTotal);
+  const shipping = Math.max(0, Number(document.getElementById('shippingCharge')?.value) || 0);
+  const finalTotal = grandTotal + shipping;
+  document.getElementById('billAmount').textContent = money(finalTotal);
+  document.getElementById('billAmountWords').textContent = numberToWordsIndian(finalTotal);
+  document.getElementById('grandTotal').textContent = money(finalTotal);
+  if (document.getElementById('accountsPanel')) updateProfitLoss();
+}
+
+document.addEventListener('input', event => {
+  if (event.target.closest('.items')) calculateTotals();
+  if (event.target.id === 'billType') updateProfitLoss();
+  if (event.target.closest('#billPaper') || event.target.id === 'purchaseCost') scheduleAutoBackup();
+});
+document.addEventListener('blur', event => {
+  if (event.target.closest('#billPaper') || event.target.id === 'purchaseCost') scheduleAutoBackup();
+}, true);
+
+function clearEditable() {
+  if (!confirm('Clear all editable customer and item details?')) return;
+  document.querySelectorAll('[contenteditable="true"]').forEach(el => {
+    if (el.closest('.header') || el.closest('.taxline') ||
+        el.closest('.conditions') || el.closest('.sign')) return;
+    if (el.textContent.trim() === '24-Gujarat') return;
+    el.textContent = '';
+  });
+  const shippingInput = document.getElementById('shippingCharge');
+  if (shippingInput) shippingInput.value = '0';
+  calculateTotals();
+}
+
+
+const BILL_STORE_KEY = 'm50SavedBillsV1';
+function getSavedBills() {
+  try { return JSON.parse(localStorage.getItem(BILL_STORE_KEY) || '[]'); }
+  catch (e) { return []; }
+}
+function updateProfitLoss() {
+  const sale = Number(document.getElementById('billAmount')?.textContent) || 0;
+  const cost = Math.max(0, Number(document.getElementById('purchaseCost')?.value) || 0);
+  const type = document.getElementById('billType')?.value || 'selling';
+  const costLabel = document.getElementById('purchaseCostLabel');
+  if (costLabel) costLabel.style.display = type === 'purchase' ? 'none' : 'grid';
+  const bills = getSavedBills().filter(b => b && (b.invoice || b.customer || (Array.isArray(b.rows) && b.rows.some(r => r && (r.product || Number(r.amount) > 0))))) .slice().sort((a,b) => {
+    const da = Date.parse(a.date || '') || Number(a.id) || 0;
+    const db = Date.parse(b.date || '') || Number(b.id) || 0;
+    return da - db;
+  });
+  let running = 0;
+  const points = bills.map((bill, index) => {
+    const amount = Math.max(0, Number(bill.total) || 0);
+    const movement = bill.type === 'purchase' ? -amount : amount - Math.max(0, Number(bill.cost) || 0);
+    running += movement;
+    return {value:running, movement, label:(bill.date || bill.invoice || ('Bill '+(index+1))), invoice:bill.invoice || ''};
+  });
+  const net = points.length ? points[points.length-1].value : 0;
+  const netEl = document.getElementById('chartNetValue');
+  const lastEl = document.getElementById('chartLastValue');
+  const status = document.getElementById('profitChartStatus');
+  if (netEl) { netEl.textContent = points.length ? ((net < 0 ? '−' : '') + '₹' + money(Math.abs(net))) : '—'; netEl.style.color = net < 0 ? '#dc2626' : '#16a34a'; }
+  if (lastEl) { lastEl.textContent = points.length ? ((points[points.length-1].movement < 0 ? '−' : '+') + '₹' + money(Math.abs(points[points.length-1].movement))) : '—'; lastEl.style.color = points.length && points[points.length-1].movement < 0 ? '#dc2626' : '#16a34a'; }
+  if (status) status.textContent = bills.length ? (bills.length + ' saved bill' + (bills.length===1?'':'s')) : 'બિલ સેવ થયા પછી જ ગણતરી દેખાશે';
+  const host = document.getElementById('profitLossChart');
+  if (!host) return;
+  if (!points.length) {
+    host.innerHTML = '<div style="padding:55px 10px;text-align:center;color:#64748b;font-size:13px">હજુ કોઈ સેવ કરેલું બિલ નથી.<br>New Bill બનાવીને Save કરો, ચાર્ટ અહીં આપમેળે દેખાશે.</div>';
+    return;
+  }
+  const values = [0, ...points.map(p=>p.value)];
+  let min = Math.min(...values), max = Math.max(...values);
+  if (min === max) { min -= 100; max += 100; }
+  const pad = Math.max((max-min)*0.16, 50); min -= pad; max += pad;
+  const W=760,H=260,L=66,R=18,T=16,B=38, plotW=W-L-R, plotH=H-T-B;
+  const x=i=>L+(points.length===1?plotW/2:(i/(points.length-1))*plotW);
+  const y=v=>T+(max-v)/(max-min)*plotH;
+  const baseline=y(0);
+  const coords=points.map((p,i)=>({x:x(i),y:y(p.value),v:p.value}));
+  const path=coords.map((p,i)=>(i?'L':'M')+p.x.toFixed(1)+','+p.y.toFixed(1)).join(' ');
+  const grid=[0,1,2,3,4].map(i=>{
+    const v=max-(max-min)*i/4, yy=y(v);
+    return '<line x1="'+L+'" y1="'+yy+'" x2="'+(W-R)+'" y2="'+yy+'" stroke="#e8edf3" stroke-width="1"/><text x="'+(L-9)+'" y="'+(yy+4)+'" text-anchor="end" fill="#94a3b8" font-size="10">'+(Math.abs(v)>=1000?(v/1000).toFixed(1)+'k':Math.round(v))+'</text>';
+  }).join('');
+  const segments=coords.slice(1).map((p,i)=>{
+    const prev=coords[i], up=p.v>=prev.v, color=up?'#16a34a':'#dc2626';
+    return '<line x1="'+prev.x+'" y1="'+prev.y+'" x2="'+p.x+'" y2="'+p.y+'" stroke="'+color+'" stroke-width="3.5" stroke-linecap="round"/>';
+  }).join('');
+  const dots=coords.map((p,i)=>'<circle cx="'+p.x+'" cy="'+p.y+'" r="'+(i===coords.length-1?5:3.2)+'" fill="'+(i===0?(p.v>=0?'#16a34a':'#dc2626'):(p.v>=coords[Math.max(0,i-1)].v?'#16a34a':'#dc2626'))+'" stroke="#fff" stroke-width="2"><title>'+escapeHtml(points[i].label)+' • ₹'+money(p.v)+'</title></circle>').join('');
+  const firstLabel=escapeHtml(String(points[0].label).slice(0,12)), lastLabel=escapeHtml(String(points[points.length-1].label).slice(0,12));
+  host.innerHTML='<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Cumulative business profit and loss chart" style="display:block;width:100%;height:auto;font-family:Arial,sans-serif">'+
+    '<defs><linearGradient id="profitAreaFill" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stop-color="#16a34a" stop-opacity=".16"/><stop offset="100%" stop-color="#16a34a" stop-opacity="0"/></linearGradient></defs>'+
+    grid+'<line x1="'+L+'" y1="'+baseline+'" x2="'+(W-R)+'" y2="'+baseline+'" stroke="#64748b" stroke-dasharray="5 4" stroke-width="1.5"/>'+
+    (points.length>1?'<path d="'+path+' L'+coords[coords.length-1].x+','+baseline+' L'+coords[0].x+','+baseline+' Z" fill="url(#profitAreaFill)"/>':'')+
+    segments+(points.length===1?'<circle cx="'+coords[0].x+'" cy="'+coords[0].y+'" r="4" fill="#16a34a"/>':'')+dots+
+    '<text x="'+L+'" y="'+(H-10)+'" fill="#94a3b8" font-size="10">'+firstLabel+'</text><text x="'+(W-R)+'" y="'+(H-10)+'" text-anchor="end" fill="#94a3b8" font-size="10">'+lastLabel+'</text></svg>';
+}
+
+function capturePaperHtml() {
+  const paper = document.getElementById('billPaper');
+  const clone = paper.cloneNode(true);
+  clone.querySelectorAll('input').forEach(input => input.setAttribute('value', input.value));
+  clone.querySelectorAll('.payment-qr img').forEach(img => img.setAttribute('src', 'data-m50-qr-placeholder'));
+  return clone.outerHTML;
+}
+let editingSavedBillId = null;
+function captureCurrentBill() {
+  calculateTotals();
+  const invoice = document.getElementById('invoiceNo').textContent.trim();
+  const rows = [...document.querySelectorAll('.item-row')].map(row => ({
+    product: row.querySelector('.product')?.innerText.trim() || '',
+    ml: row.querySelector('.ml')?.innerText.trim() || '',
+    qty: row.querySelector('.qty')?.innerText.trim() || '',
+    rate: row.querySelector('.rate')?.innerText.trim() || '',
+    amount: (parseBillNumber(row.querySelector('.qty')?.innerText) * parseBillNumber(row.querySelector('.rate')?.innerText))
+  }));
+  const customer = [...document.querySelectorAll('.customer [contenteditable="true"]')]
+    .map(el => (el.innerText || el.textContent || '').replace(/\u00a0/g, ' ').trim())
+    .find(Boolean) || '';
+  const meaningful = !!customer || rows.some(r => r.product || r.ml || parseBillNumber(r.qty) > 0 || parseBillNumber(r.rate) > 0) || parseBillNumber(document.getElementById('shippingCharge')?.value) > 0;
+  if (!meaningful) return null;
+  const existing = editingSavedBillId == null ? null : getSavedBills().find(b => Number(b.id) === Number(editingSavedBillId));
+  return {
+    id: existing ? existing.id : Date.now(), invoice, date: document.getElementById('invoiceDate').textContent,
+    type: document.getElementById('billType')?.value === 'purchase' ? 'purchase' : 'selling',
+    customer, total: Number(document.getElementById('billAmount').textContent) || 0,
+    cost: document.getElementById('billType')?.value === 'purchase' ? 0 : Math.max(0, Number(document.getElementById('purchaseCost')?.value) || 0),
+    shipping: Number(document.getElementById('shippingCharge').value) || 0, rows,
+    paperHtml: capturePaperHtml(), paperSize: document.getElementById('billPaper').dataset.paperSize || 'A4'
+  };
+}
+function persistCurrentBill(showMessage) {
+  let bill;
+  try { bill = captureCurrentBill(); }
+  catch (e) {
+    console.error('Bill capture failed:', e);
+    if (showMessage) alert('બિલની વિગતો વાંચવામાં ભૂલ આવી. પેજ ફરી ખોલીને પ્રયાસ કરો.');
+    return false;
+  }
+  if (!bill) {
+    if (showMessage) alert('પહેલાં બિલમાં ગ્રાહકનું નામ અથવા પ્રોડક્ટની વિગતો લખો.');
+    return false;
+  }
+  try {
+    const bills = getSavedBills();
+    const existingIndex = bills.findIndex(b =>
+      (editingSavedBillId != null && Number(b.id) === Number(editingSavedBillId)) ||
+      (String(b.invoice || '') === String(bill.invoice || '') && String(bill.invoice || '') !== '')
+    );
+    if (existingIndex >= 0) {
+      bill.id = bills[existingIndex].id;
+      bills[existingIndex] = bill;
+    } else {
+      bills.unshift(bill);
+    }
+    try {
+      localStorage.setItem(BILL_STORE_KEY, JSON.stringify(bills));
+    } catch (storageError) {
+      bill.paperHtml = '';
+      const retryIndex = bills.findIndex(b => Number(b.id) === Number(bill.id));
+      if (retryIndex >= 0) bills[retryIndex] = bill;
+      localStorage.setItem(BILL_STORE_KEY, JSON.stringify(bills));
+    }
+  } catch (e) {
+    console.error('Bill save failed:', e);
+    if (showMessage) alert('બિલ સેવ થઈ શક્યું નથી. Browser storage ભરાઈ ગયું હોઈ શકે છે. પહેલાં Backup લો અને જગ્યા ખાલી કરો.');
+    return false;
+  }
+  try { showSavedBills(); } catch (e) { console.error('Saved Bills refresh:', e); }
+  try { updateProfitLoss(); } catch (e) { console.error('Business Summary refresh:', e); }
+  try { renderProductSummary(); } catch (e) { console.error('Product Summary refresh:', e); }
+  if (showMessage) alert('બિલ સફળતાપૂર્વક સેવ થયું.');
+  return true;
+}
+
+function printCurrentBill() {
+  calculateTotals();
+  const paper = document.getElementById('billPaper');
+  if (!paper) { alert('બિલ મળ્યું નથી.'); return; }
+
+  // Use the SAME document for printing. This avoids the Android print-preview
+  // blank-page problem caused by opening a popup/new print document.
+  const size = document.getElementById('paperSize')?.value || paper.dataset.paperSize || 'A4';
+  let widthMm = 210, heightMm = 297;
+
+  if (size === 'A5') {
+    widthMm = 148; heightMm = 210;
+  } else if (size === 'CUSTOM') {
+    widthMm = Math.min(1000, Math.max(50, Number(document.getElementById('paperWidth')?.value) || 148));
+    heightMm = Math.min(1500, Math.max(50, Number(document.getElementById('paperHeight')?.value) || 210));
+  }
+
+  // Keep the selected custom dimensions available to the browser print engine.
+  let pageStyle = document.getElementById('dynamicPrintPageSize');
+  if (!pageStyle) {
+    pageStyle = document.createElement('style');
+    pageStyle.id = 'dynamicPrintPageSize';
+    document.head.appendChild(pageStyle);
+  }
+  pageStyle.textContent =
+    '@page { size: ' + widthMm + 'mm ' + heightMm + 'mm; margin: 5mm; }\n' +
+    '@media print { #billPaper { width:100% !important; max-width:none !important; min-width:0 !important; } #billPaper table { width:100% !important; } #billPaper .items { table-layout:fixed !important; } }';
+
+  // Mark only the bill for printing. The normal @media print rules below
+  // hide the app/dashboard/settings/toolbars.
+  document.body.classList.add('m50-printing');
+  paper.dataset.paperSize = size;
+  paper.style.setProperty('--print-width-mm', widthMm + 'mm');
+  paper.style.setProperty('--print-height-mm', heightMm + 'mm');
+
+  // Give the browser a moment to apply the print CSS before opening the
+  // Android/Chrome print preview.
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      window.print();
+    });
+  });
+
+  const cleanup = () => {
+    document.body.classList.remove('m50-printing');
+    paper.style.removeProperty('--print-width-mm');
+    paper.style.removeProperty('--print-height-mm');
+    window.removeEventListener('afterprint', cleanup);
+  };
+  window.addEventListener('afterprint', cleanup);
+}
+
+function saveCurrentBill() {
+  const invoice = document.getElementById('invoiceNo').textContent.trim();
+  if (getSavedBills().some(b => String(b.invoice) === String(invoice) &&
+      !(editingSavedBillId != null && Number(b.id) === Number(editingSavedBillId))) &&
+      !confirm('આ Invoice No. પહેલેથી સેવ છે. હાલની વિગતો સાથે અપડેટ કરવું છે?')) return;
+  persistCurrentBill(true);
+}
+let autoSaveTimer = null;
+function scheduleAutoBackup() {
+  clearTimeout(autoSaveTimer);
+  autoSaveTimer = setTimeout(() => persistCurrentBill(false), 900);
+}
+let savedBillFilter = 'all';
+function setSavedBillFilter(filter) {
+  savedBillFilter = ['all','purchase','selling'].includes(filter) ? filter : 'all';
+  showSavedBills();
+}
+function showSavedBills() {
+  const area = document.getElementById('savedBillsArea');
+  const bills = getSavedBills();
+  const filtered = bills.filter(b => savedBillFilter === 'all' ||
+    (savedBillFilter === 'purchase' ? b.type === 'purchase' : b.type !== 'purchase'));
+  const filterButton = (key, label) => '<button type="button" onclick="setSavedBillFilter(\''+key+'\')" style="background:'+(savedBillFilter===key?'#173653':'#687887')+'">'+label+'</button>';
+  area.innerHTML = '<h3>Saved Bills / સેવ કરેલા બિલ</h3>' +
+    '<span style="font-size:13px;color:#237a3b;font-weight:bold">✓ Automatic save ચાલુ છે</span> ' +
+    '<div style="margin:8px 0;display:flex;gap:8px;flex-wrap:wrap;align-items:center">' +
+    filterButton('all','બધા બિલ') + filterButton('purchase','Purchase Bill') + filterButton('selling','Selling Bill') +
+    '</div>' +
+    '<div style="margin:8px 0;display:flex;gap:8px;flex-wrap:wrap;align-items:center">' +
+    '<button type="button" onclick="downloadDataBackup()">Download Data Backup / બેકઅપ ફાઇલ બનાવો</button>' +
+    '<button type="button" onclick="document.getElementById(\'restoreBillsFile\').click()">Restore Data Backup / બેકઅપ ફાઇલ ઉમેરો</button>' +
+    '<input id="restoreBillsFile" type="file" accept=".json,application/json" style="display:none" onchange="restoreSavedBills(this)">' +
+    '</div>' +
+    (filtered.length ? '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;margin-top:8px"><thead><tr><th>Type</th><th>Invoice</th><th>Date</th><th>Customer</th><th>Bill ₹</th><th>Action</th></tr></thead><tbody>' +
+    filtered.map(b => '<tr><td><b>'+(b.type === 'purchase' ? 'Purchase' : 'Selling')+'</b></td><td>'+escapeHtml(b.invoice)+'</td><td>'+escapeHtml(b.date)+'</td><td>'+escapeHtml(b.customer)+'</td><td>'+money(Number(b.total)||0)+'</td><td><button type="button" onclick="editSavedBill('+Number(b.id)+')">Edit / ફેરફાર</button> <button type="button" onclick="printSavedBill('+Number(b.id)+')">PDF / Print</button> <button type="button" onclick="deleteSavedBill('+Number(b.id)+')">Delete</button></td></tr>').join('') +
+    '</tbody></table></div>' : '<p><b>આ પ્રકારનું કોઈ બિલ સેવ નથી.</b></p>');
+  updateProfitLoss();
+}
+
+const WEEKLY_BACKUP_LAST_KEY = 'm50WeeklyBackupLastAtV1';
+const WEEKLY_BACKUP_INTERVAL = 7 * 24 * 60 * 60 * 1000;
+function downloadDataBackup(options = {}) {
+  const silent = !!options.silent;
+  try {
+    const now = new Date();
+    const dateLabel = [String(now.getDate()).padStart(2,'0'), String(now.getMonth()+1).padStart(2,'0'), now.getFullYear()].join('-');
+    let products = [];
+    try { products = typeof getProducts === 'function' ? getProducts() : []; } catch (e) {}
+    const backup = {
+      app: '',
+      formatVersion: 2,
+      backupDate: dateLabel,
+      exportedAt: now.toISOString(),
+      bills: getSavedBills(),
+      products,
+      companyDetails: localStorage.getItem(COMPANY_SETTINGS_KEY) || '{}',
+      stampSignature: localStorage.getItem(STAMP_SIGNATURE_KEY) || ''
+    };
+    const blob = new Blob([JSON.stringify(backup, null, 2)], {type: 'application/json;charset=utf-8'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'Business-Backup-' + dateLabel + '.json';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1500);
+    localStorage.setItem(WEEKLY_BACKUP_LAST_KEY, String(now.getTime()));
+    if (!silent) alert('Backup ફાઇલ તૈયાર છે. નામ: Business-Backup-' + dateLabel + '.json. Downloads ફોલ્ડર તપાસો.');
+    updateWeeklyBackupNotice();
+  } catch (e) {
+    if (!silent) alert('Backup ફાઇલ બની શકી નથી. ફરી પ્રયાસ કરો.');
+    showWeeklyBackupNotice(true);
+  }
+}
+function showWeeklyBackupNotice(isError = false) {
+  let box = document.getElementById('weeklyBackupNotice');
+  if (!box) {
+    box = document.createElement('div');
+    box.id = 'weeklyBackupNotice';
+    box.style.cssText = 'max-width:900px;margin:10px auto;padding:12px;border:1px solid #c58b2a;border-radius:8px;background:#fff8e8;font-family:Arial,sans-serif;';
+    const panel = document.getElementById('accountsPanel');
+    if (panel) panel.insertAdjacentElement('afterend', box); else document.body.prepend(box);
+  }
+  box.innerHTML = '<b>' + (isError ? 'આપમેળે બેકઅપ ડાઉનલોડ ન થઈ શક્યો.' : '7 દિવસનો બેકઅપ તૈયાર છે.') + '</b> ' +
+    'બ્રાઉઝર આપમેળે ડાઉનલોડ અટકાવે તો નીચે બટન દબાવો. ' +
+    '<button type="button" onclick="downloadDataBackup()">હમણાં Backup Download કરો</button>';
+}
+function updateWeeklyBackupNotice() {
+  const box = document.getElementById('weeklyBackupNotice');
+  if (box) box.remove();
+}
+function checkWeeklyBackup() {
+  try {
+    const now = Date.now();
+    const last = Number(localStorage.getItem(WEEKLY_BACKUP_LAST_KEY) || 0);
+    if (!last) {
+      // Start the first seven-day cycle from the first time this feature is opened.
+      localStorage.setItem(WEEKLY_BACKUP_LAST_KEY, String(now));
+      return;
+    }
+    if (now - last >= WEEKLY_BACKUP_INTERVAL) {
+      // Browsers may block downloads without a user gesture; show a manual fallback too.
+      showWeeklyBackupNotice(false);
+      downloadDataBackup({silent:true});
+    }
+  } catch (e) { showWeeklyBackupNotice(true); }
+}
+function restoreSavedBills(input) {
+  const file = input && input.files && input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function() {
+    try {
+      const parsed = JSON.parse(String(reader.result || '{}'));
+      const imported = Array.isArray(parsed) ? parsed : (parsed && Array.isArray(parsed.bills) ? parsed.bills : null);
+      if (!imported || !imported.every(b => b && typeof b === 'object' && b.invoice != null)) {
+        throw new Error('invalid backup');
+      }
+      if (!confirm('બેકઅપ ફાઇલમાંથી ' + imported.length + ' બિલ Restore કરવા છે? એકસરખા Invoice No. હોય તો બેકઅપનું બિલ હાલના બિલને બદલી દેશે.')) {
+        input.value = '';
+        return;
+      }
+
+      const byInvoice = new Map(getSavedBills().map(b => [String(b.invoice), b]));
+      imported.forEach(b => {
+        const restored = {...b};
+        if (!restored.id || !Number.isFinite(Number(restored.id))) {
+          restored.id = Date.now() + Math.floor(Math.random() * 1000000);
+        }
+        byInvoice.set(String(restored.invoice), restored);
+      });
+      const restoredBills = Array.from(byInvoice.values())
+        .sort((a, b) => Number(b.id || 0) - Number(a.id || 0));
+      localStorage.setItem(BILL_STORE_KEY, JSON.stringify(restoredBills));
+
+      if (typeof parsed.stampSignature === 'string') {
+        if (parsed.stampSignature) localStorage.setItem(STAMP_SIGNATURE_KEY, parsed.stampSignature);
+        else localStorage.removeItem(STAMP_SIGNATURE_KEY);
+        applyStampSignature(parsed.stampSignature);
+      }
+      if (typeof parsed.companyDetails === 'string') {
+        localStorage.setItem(COMPANY_SETTINGS_KEY, parsed.companyDetails);
+        loadCompanyDetails();
+      }
+
+      showSavedBills();
+      alert('બેકઅપ સફળતાપૂર્વક Restore થયું. કુલ ' + imported.length + ' બિલની વિગતો તપાસો.');
+    } catch (e) {
+      alert('આ બેકઅપ ફાઇલ વાંચી શકાતી નથી. આ એપમાંથી બનાવેલી .json Data Backup ફાઇલ પસંદ કરો.');
+    }
+    input.value = '';
+  };
+  reader.onerror = function() {
+    alert('બેકઅપ ફાઇલ વાંચી શકાતી નથી. ફરી પ્રયાસ કરો.');
+    input.value = '';
+  };
+  reader.readAsText(file);
+}
+
+function escapeHtml(v) {
+  return String(v ?? '').replace(/[&<>"']/g, c => ({
+    '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'
+  }[c]));
+}
+
+const PREMIUM_BILL_FORMATS = [
+ ['Classic Gold','Elegant gold • timeless luxury'],['Royal Navy','Deep navy • executive style'],
+ ['Emerald Elite','Emerald • refined modern'],['Burgundy Luxe','Burgundy • boutique style'],
+ ['Monochrome','Black & white • minimal premium'],['Copper Heritage','Warm copper • classic craft'],
+ ['Sapphire','Sapphire blue • clean professional'],['Olive Prestige','Olive • understated luxury'],
+ ['Amethyst','Purple • signature edition'],['Ruby Signature','Ruby red • bold premium']
+];
+let pendingPremiumFormat = 1;
+function renderPremiumBillFormats(){
+ const box=document.getElementById('billFormatChoices'); if(!box)return;
+ let current=1; try{current=Number(localStorage.getItem('m50PremiumBillFormat')||1)}catch(e){}
+ pendingPremiumFormat=current;
+ const colors=['#9b793e','#142b49','#176b62','#632e49','#252525','#8b4d26','#344d79','#52633a','#7652a1','#a33d3d'];
+ box.innerHTML=PREMIUM_BILL_FORMATS.map((f,i)=>`<button type="button" class="premium-format-card ${i+1===pendingPremiumFormat?'selected':''}" onclick="selectPremiumBillFormat(${i+1})"><div class="mini-paper mini-font-${i+1}" style="--fmt-accent:${colors[i]};--fmt-bg:#fff;--fmt-ink:#17283d"><b>${escapeHtml(getCompanyDetails().name || 'Your Company')}</b><div style="text-align:center">TAX INVOICE</div><i></i><div>Customer Details</div><i></i><div>Product &nbsp; Qty &nbsp; Amount</div><i></i><div style="text-align:right">TOTAL ₹ 0.00</div></div><strong>${String(i+1).padStart(2,'0')} · ${f[0]}</strong><small>${f[1]}</small></button>`).join('');
+ const status=document.getElementById('premiumFormatStatus'); if(status)status.textContent=current===0?'હાલનું ફોર્મેટ: જૂનું મૂળ ફોર્મેટ':'હાલનું ફોર્મેટ: '+(PREMIUM_BILL_FORMATS[current-1]?.[0]||'જૂનું મૂળ ફોર્મેટ');
+}
+function selectPremiumBillFormat(number){
+ pendingPremiumFormat=Math.max(1,Math.min(10,Number(number)||1));
+ document.querySelectorAll('.premium-format-card').forEach((el,i)=>el.classList.toggle('selected',i+1===pendingPremiumFormat));
+}
+function applyPremiumBillFormat(number){
+ const paper=document.getElementById('billPaper'); if(!paper)return;
+ paper.className=paper.className.replace(/\bm50-fmt-\d+\b/g,'').trim(); if(Number(number)>0)paper.classList.add('m50-fmt-'+number);
+}
+function savePremiumBillFormat(){
+ try{if(pendingPremiumFormat<1||pendingPremiumFormat>10){alert('પહેલાં કોઈ એક પ્રીમિયમ ફોર્મેટ પસંદ કરો.');return;}localStorage.setItem('m50PremiumBillFormat',String(pendingPremiumFormat));applyPremiumBillFormat(pendingPremiumFormat);const status=document.getElementById('premiumFormatStatus');if(status)status.textContent='✓ '+PREMIUM_BILL_FORMATS[pendingPremiumFormat-1][0]+' સેવ થયું. હવે નવા બિલમાં આ જ ફોર્મેટ રહેશે.';scheduleAutoBackup();}
+ catch(e){alert('ફોર્મેટ સેવ થઈ શક્યું નથી.')}
+}
+function restoreOriginalBillFormat(){
+ try{localStorage.removeItem('m50PremiumBillFormat');pendingPremiumFormat=0;applyPremiumBillFormat(0);document.querySelectorAll('.premium-format-card').forEach(el=>el.classList.remove('selected'));const status=document.getElementById('premiumFormatStatus');if(status)status.textContent='✓ જૂનું મૂળ બિલ ફોર્મેટ પાછું આવી ગયું. હવે નવા બિલમાં પણ આ જ ફોર્મેટ રહેશે.';scheduleAutoBackup();}
+ catch(e){alert('જૂનું ફોર્મેટ પાછું લાવી શકાયું નથી.')}
+}
+function startNewBill(){
+  try {
+    const hasData = !!(
+      [...document.querySelectorAll('.customer [contenteditable="true"]')].some(x => (x.textContent || '').replace(/\u00a0/g,' ').trim()) ||
+      [...document.querySelectorAll('.item-row .product,.item-row .ml,.item-row .qty,.item-row .rate')].some(x => (x.textContent || '').replace(/\u00a0/g,' ').trim()) ||
+      parseBillNumber(document.getElementById('shippingCharge')?.value) > 0
+    );
+    if (hasData) {
+      clearTimeout(autoSaveTimer);
+      const saved = persistCurrentBill(false);
+      if (!saved) {
+        alert('હાલનું બિલ સેવ થઈ શક્યું નથી. જૂનું બિલ સુરક્ષિત રાખવા માટે નવું બિલ ખોલ્યું નથી. પહેલાં Backup લો અથવા ફરી Save કરો.');
+        return;
+      }
+    }
+    editingSavedBillId = null;
+    const heading = document.querySelector('#billView .app-pagebar h2');
+    if (heading) heading.textContent = 'New Bill';
+    const tbody = document.querySelector('tbody.items');
+    if (tbody) {
+      tbody.innerHTML = '<tr class="item-row"><td class="sr">1</td><td contenteditable="true" class="product"></td><td contenteditable="true" class="ml"></td><td contenteditable="true" class="qty"></td><td contenteditable="true" class="rate"></td><td class="amount">0.00</td></tr>';
+      tbody.classList.remove('compact-rows');
+    }
+    document.querySelectorAll('.customer [contenteditable="true"]').forEach(el => {
+      if ((el.textContent || '').trim() !== '24-Gujarat') el.textContent = '';
+    });
+    const ship = document.getElementById('shippingCharge'); if (ship) ship.value = '0';
+    const cost = document.getElementById('purchaseCost'); if (cost) cost.value = '0';
+    const type = document.getElementById('billType'); if (type) type.value = 'selling';
+    const quickType = document.getElementById('billTypeQuick'); if (quickType) quickType.value = 'selling';
+    setAutomaticInvoiceDetails();
+    try { applyCustomBillColumns(); } catch (e) { console.warn('Custom columns:', e); }
+    let fmt = 0;
+    try { fmt = Number(localStorage.getItem('m50PremiumBillFormat') || 0); } catch (e) {}
+    try { applyPremiumBillFormat(fmt); } catch (e) {}
+    calculateTotals();
+    openAppPage('bill');
+  } catch (e) {
+    console.error('New Bill error:', e);
+    try { openAppPage('bill'); } catch (ignored) {}
+    alert('New Bill ખોલવામાં ભૂલ આવી. એપ બંધ કરીને ફરી ખોલો. જો ફરી ભૂલ આવે તો સ્ક્રીનશોટ મોકલો.');
+  }
+}
+
+function mountAppSections(){
+  const move=(id,parentId)=>{const el=document.getElementById(id),parent=document.getElementById(parentId);if(el&&parent&&el.parentElement!==parent)parent.appendChild(el);};
+  move('toolbar','billView');
+  move('billPaper','billView');
+  move('billFormatModal','billView');
+  move('businessSettings','settingsView');
+  move('stampSignatureSettings','settingsView');
+}
+function openAppPage(page) {
+  mountAppSections();
+  const ids = ['appHome','billView','billFormatView','savedView','challanView','productsView','productCodeView','accountsView','settingsView'];
+  ids.forEach(id => { const el=document.getElementById(id); if(el) el.style.display='none'; });
+  const hide=(id)=>{const el=document.getElementById(id);if(el)el.style.display='none';};
+  ['toolbar','businessSettings','stampSignatureSettings','accountsPanel','billPaper','billFormatModal'].forEach(hide);
+  const show=(id,display='block')=>{const el=document.getElementById(id);if(el)el.style.display=display;};
+  if(page==='home'){
+    show('appHome');
+  } else {
+    const map={bill:'billView',formats:'billFormatView',saved:'savedView',challan:'challanView',products:'productsView',productCodes:'productCodeView',accounts:'accountsView',settings:'settingsView'};
+    show(map[page]);
+    if(page==='bill'){
+      show('toolbar','flex');show('billPaper');
+      const mainType=document.getElementById('billType');const quickType=document.getElementById('billTypeQuick');if(mainType&&quickType)quickType.value=mainType.value;
+    }
+    if(page==='saved'){
+      // Keep the old-bills list separate from the Business Summary panel.
+      const area=document.getElementById('savedBillsArea');
+      const saved=document.getElementById('savedView');
+      if(area && saved && area.parentElement!==saved) saved.appendChild(area);
+      show('savedBillsArea');
+      showSavedBills();
+    }
+    if(page==='accounts'){
+      // Business Summary belongs only on its own page.
+      const panel=document.getElementById('accountsPanel');
+      const accounts=document.getElementById('accountsView');
+      if(panel && accounts && panel.parentElement!==accounts) accounts.appendChild(panel);
+      show('accountsPanel');updateProfitLoss();
+    }
+    if(page==='settings'){
+      show('businessSettings');show('stampSignatureSettings');
+    }
+    if(page==='products')renderProductSummary();
+    if(page==='productCodes')renderMasterProductList();
+    if(page==='challan'){prepareChallan();renderChallans();}
+  }
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+const CHALLAN_KEY='m50DeliveryChallansV1';
+function getChallans(){try{return JSON.parse(localStorage.getItem(CHALLAN_KEY)||'[]')}catch(e){return[]}}
+function prepareChallan(){
+ const list=getChallans(); const n=String(list.length+1).padStart(3,'0');
+ document.getElementById('challanNo').value='DC/'+n;
+ document.getElementById('challanDate').value=new Date().toISOString().slice(0,10);
+}
+function saveChallan(){
+ const customer=document.getElementById('challanCustomer').value.trim();
+ const items=document.getElementById('challanItems').value.trim();
+ if(!customer||!items){alert('ગ્રાહકનું નામ અને પ્રોડક્ટની વિગતો લખો.');return}
+ const c={id:Date.now(),no:document.getElementById('challanNo').value,date:document.getElementById('challanDate').value,customer,phone:document.getElementById('challanPhone').value,address:document.getElementById('challanAddress').value,items,remark:document.getElementById('challanRemark').value};
+ const a=getChallans();a.unshift(c);localStorage.setItem(CHALLAN_KEY,JSON.stringify(a));renderChallans();prepareChallan();['challanCustomer','challanPhone','challanAddress','challanItems','challanRemark'].forEach(id=>document.getElementById(id).value='');alert('Delivery Challan સેવ થયું.');
+}
+function renderChallans(){
+ const a=getChallans();const el=document.getElementById('challanList');
+ el.innerHTML='<h3>Saved Delivery Challans ('+a.length+')</h3>'+(a.length?a.map(c=>'<div style="padding:10px;border:1px solid #dce3eb;border-radius:9px;margin:7px 0"><b>'+escapeHtml(c.no)+'</b> • '+escapeHtml(c.date)+'<br>'+escapeHtml(c.customer)+'<br><button onclick="printChallanById('+c.id+')">Print</button> <button style="background:#8a3030" onclick="deleteChallan('+c.id+')">Delete</button></div>').join(''):'<p>હજુ કોઈ ચલણ સેવ નથી.</p>');
+}
+function deleteChallan(id){if(!confirm('આ ચલણ કાઢી નાખવું છે?'))return;localStorage.setItem(CHALLAN_KEY,JSON.stringify(getChallans().filter(c=>c.id!==id)));renderChallans()}
+function printChallan(){const c={no:document.getElementById('challanNo').value,date:document.getElementById('challanDate').value,customer:document.getElementById('challanCustomer').value,phone:document.getElementById('challanPhone').value,address:document.getElementById('challanAddress').value,items:document.getElementById('challanItems').value,remark:document.getElementById('challanRemark').value};printChallanRecord(c)}
+function printChallanById(id){const c=getChallans().find(x=>x.id===id);if(c)printChallanRecord(c)}
+function printChallanRecord(c){
+ const old=document.getElementById('challanPrintPaper'); if(old)old.remove();
+ const esc=v=>escapeHtml(v||'');
+ const company=getCompanyDetails();
+ const paper=document.createElement('section');
+ paper.id='challanPrintPaper';
+ paper.style.cssText='display:none;background:#fff;color:#17283d;font:15px Arial,sans-serif;border:2px solid #263c55;padding:25px;max-width:750px;margin:0 auto;';
+ paper.innerHTML='<h1 style="text-align:center;letter-spacing:2px;margin:0 0 6px">'+esc(company.name)+'</h1><p style="text-align:center;margin:4px 0">'+esc(company.address)+'</p><p style="text-align:center;margin:4px 0">'+esc(company.phone)+'</p><h2 style="text-align:center">DELIVERY CHALLAN</h2><div style="border-bottom:1px solid #bbb;padding:12px 0"><b>Challan No:</b> '+esc(c.no)+'　 <b>Date:</b> '+esc(c.date)+'</div><div style="border-bottom:1px solid #bbb;padding:12px 0"><b>Customer:</b> '+esc(c.customer)+'</div><div style="border-bottom:1px solid #bbb;padding:12px 0"><b>Mobile:</b> '+esc(c.phone)+'</div><div style="border-bottom:1px solid #bbb;padding:12px 0"><b>Address:</b> '+esc(c.address)+'</div><div style="border-bottom:1px solid #bbb;padding:12px 0;white-space:pre-wrap"><b>Product / Details:</b><br>'+esc(c.items)+'</div><div style="border-bottom:1px solid #bbb;padding:12px 0"><b>Remark:</b> '+esc(c.remark)+'</div><div style="margin-top:90px;text-align:right">Authorised Signature</div>';
+ document.body.appendChild(paper);
+ document.body.classList.add('m50-challan-printing');
+ const cleanup=()=>{document.body.classList.remove('m50-challan-printing');paper.remove();window.removeEventListener('afterprint',cleanup);};
+ window.addEventListener('afterprint',cleanup,{once:true});
+ requestAnimationFrame(()=>requestAnimationFrame(()=>window.print()));
+ setTimeout(cleanup,120000);
+}
+
+function renderProductSummary(){
+ const bills=getSavedBills();
+ const groups={
+   selling:{title:'Selling / વેચાણ',items:{},qty:0,amount:0},
+   purchase:{title:'Purchase / ખરીદી',items:{},qty:0,amount:0}
+ };
+ bills.forEach(b=>{
+   const type=b.type==='purchase'?'purchase':'selling';
+   (b.rows||[]).forEach(r=>{
+     const name=(r.product||'').trim(); if(!name)return;
+     const qty=parseBillNumber(r.qty);
+     const storedAmount=parseBillNumber(r.amount);
+     const amount=storedAmount || (qty * parseBillNumber(r.rate));
+     const g=groups[type];
+     if(!g.items[name])g.items[name]={qty:0,amount:0};
+     g.items[name].qty+=qty; g.items[name].amount+=amount;
+     g.qty+=qty; g.amount+=amount;
+   });
+ });
+ const section=(key)=>{
+   const g=groups[key], entries=Object.entries(g.items);
+   return '<section style="margin:14px 0;padding:12px;border:1px solid #dce3eb;border-radius:10px">'+
+     '<h3 style="margin:0 0 8px;color:#173653">'+g.title+'</h3>'+
+     '<div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:9px;font-weight:bold">'+
+       '<span>Total Qty: '+g.qty+'</span><span>Total '+(key==='purchase'?'Purchase':'Selling')+': ₹'+money(g.amount)+'</span></div>'+
+     (entries.length?'<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse"><thead><tr><th>Product</th><th>Total Qty</th><th>Total Amount ₹</th></tr></thead><tbody>'+
+       entries.map(([n,v])=>'<tr><td>'+escapeHtml(n)+'</td><td>'+v.qty+'</td><td>'+money(v.amount)+'</td></tr>').join('')+
+       '</tbody></table></div>':'<p style="margin:4px 0;color:#667487">આ પ્રકારની કોઈ પ્રોડક્ટ એન્ટ્રી નથી.</p>')+
+   '</section>';
+ };
+ const totalSelling=groups.selling.amount,totalPurchase=groups.purchase.amount;
+ document.getElementById('productSummary').innerHTML=
+   '<div style="display:flex;gap:10px;flex-wrap:wrap;margin:10px 0">'+
+   '<div style="flex:1;min-width:130px;background:#edf7f0;padding:12px;border-radius:9px"><b>Total Selling</b><div style="font-size:20px;font-weight:bold">₹'+money(totalSelling)+'</div></div>'+
+   '<div style="flex:1;min-width:130px;background:#fff3e8;padding:12px;border-radius:9px"><b>Total Purchase</b><div style="font-size:20px;font-weight:bold">₹'+money(totalPurchase)+'</div></div>'+
+   '<div style="flex:1;min-width:130px;background:#eef3fa;padding:12px;border-radius:9px"><b>Difference</b><div style="font-size:20px;font-weight:bold">₹'+money(totalSelling-totalPurchase)+'</div></div>'+
+   '</div>'+section('selling')+section('purchase');
+}
+
+
+function editSavedBill(id) {
+  const bill = getSavedBills().find(b => Number(b.id) === Number(id));
+  if (!bill) { alert('સેવ કરેલું બિલ મળ્યું નથી.'); return; }
+  if (!confirm('આ સેવ કરેલું બિલ Edit કરવા માટે હાલનું બિલ બદલાશે. આગળ વધવું છે?')) return;
+
+  const current = document.getElementById('billPaper');
+  if (bill.paperHtml) {
+    const parsed = new DOMParser().parseFromString(bill.paperHtml, 'text/html');
+    const savedPaper = parsed.querySelector('#billPaper');
+    if (savedPaper) {
+      current.innerHTML = savedPaper.innerHTML;
+      current.dataset.paperSize = bill.paperSize || savedPaper.dataset.paperSize || 'A4';
+    }
+  } else {
+    document.getElementById('invoiceNo').textContent = bill.invoice || '';
+    document.getElementById('invoiceDate').textContent = bill.date || '';
+    const customerFields = document.querySelectorAll('.customer [contenteditable="true"]');
+    if (customerFields[0]) customerFields[0].textContent = bill.customer || '';
+    const tbody = document.querySelector('tbody.items');
+    tbody.innerHTML = (bill.rows || []).map((r,i) =>
+      '<tr class="item-row"><td class="sr">'+(i+1)+'</td><td contenteditable="true" class="product">'+escapeHtml(r.product)+'</td><td contenteditable="true" class="ml">'+escapeHtml(r.ml)+'</td><td contenteditable="true" class="qty">'+escapeHtml(r.qty)+'</td><td contenteditable="true" class="rate">'+escapeHtml(r.rate)+'</td><td class="amount">'+escapeHtml(r.amount)+'</td></tr>'
+    ).join('');
+    if (!tbody.children.length) addBillProductRow();
+    document.getElementById('shippingCharge').value = Number(bill.shipping)||0;
+    current.dataset.paperSize = bill.paperSize || 'A4';
+  }
+
+  // Use the current QR and reattach the row controls after loading an old snapshot.
+  const activeQr = document.querySelector('.payment-qr img')?.getAttribute('src');
+  const savedQr = current.querySelector('.payment-qr img');
+  if (savedQr && activeQr) savedQr.setAttribute('src', activeQr);
+  else current.querySelectorAll('.payment-qr').forEach(el=>el.remove());
+  if (!current.querySelector('.bill-row-controls')) {
+    const controls = document.createElement('div');
+    controls.className = 'bill-row-controls';
+    controls.style.cssText = 'margin:8px 0;text-align:right;';
+    controls.innerHTML = '<button type="button" onclick="addBillProductRow()">+ Add Product / બિલમાં પ્રોડક્ટ ઉમેરો</button>';
+    const table = current.querySelector('table');
+    if (table) table.insertAdjacentElement('beforebegin', controls);
+  }
+
+  editingSavedBillId = bill.id;
+  document.getElementById('billType').value = bill.type === 'purchase' ? 'purchase' : 'selling';
+  const quickBillType = document.getElementById('billTypeQuick'); if (quickBillType) quickBillType.value = bill.type === 'purchase' ? 'purchase' : 'selling';
+  const purchaseCostInput = document.getElementById('purchaseCost'); if (purchaseCostInput) purchaseCostInput.value = Number(bill.cost)||0;
+  const size = bill.paperSize || current.dataset.paperSize || 'A4';
+  const sizeSelect = document.getElementById('paperSize');
+  if (sizeSelect && ['A4','A5','CUSTOM'].includes(size)) sizeSelect.value = size;
+  calculateTotals();
+  openAppPage('bill');
+  const heading = document.querySelector('#billView .app-pagebar h2');
+  if (heading) heading.textContent = 'જૂનું બિલ Edit કરો';
+  current.scrollIntoView({behavior:'smooth',block:'start'});
+  alert('જૂનું બિલ Edit માટે ખુલ્યું છે. ફેરફાર કર્યા પછી Save Bill દબાવો.');
+}
+
+function printSavedBill(id) {
+  const bill = getSavedBills().find(b => Number(b.id) === Number(id));
+  if (!bill) { alert('સેવ કરેલું બિલ મળ્યું નથી.'); return; }
+
+  // Print inside this tab: Android browsers often block window.open() from saved-bill rows.
+  const paper = document.getElementById('billPaper');
+  const previousHtml = paper.innerHTML;
+  const activeQrSrc = paper.querySelector('.payment-qr img')?.getAttribute('src') || '';
+  const previousSize = paper.dataset.paperSize || 'A4';
+  const previousPage = document.getElementById('billView').style.display;
+  const previousToolbar = document.querySelector('#billView .toolbar')?.style.display || '';
+  let printHtml = bill.paperHtml;
+
+  if (!printHtml) {
+    const clone = paper.cloneNode(true);
+    clone.dataset.paperSize = bill.paperSize || 'A4';
+    clone.querySelector('#invoiceNo').textContent = bill.invoice || '';
+    clone.querySelector('#invoiceDate').textContent = bill.date || '';
+    const customerFields = clone.querySelectorAll('.customer [contenteditable="true"]');
+    if (customerFields[0]) customerFields[0].textContent = bill.customer || '';
+    const tbody = clone.querySelector('tbody.items');
+    tbody.innerHTML = (bill.rows || []).map((r,i) =>
+      '<tr class="item-row"><td class="sr">'+(i+1)+'</td><td contenteditable="true" class="product">'+escapeHtml(r.product)+'</td><td contenteditable="true" class="ml">'+escapeHtml(r.ml)+'</td><td contenteditable="true" class="qty">'+escapeHtml(r.qty)+'</td><td contenteditable="true" class="rate">'+escapeHtml(r.rate)+'</td><td class="amount">'+escapeHtml(r.amount)+'</td></tr>'
+    ).join('');
+    const shipping = clone.querySelector('#shippingCharge');
+    if (shipping) { shipping.value = Number(bill.shipping)||0; shipping.setAttribute('value', String(Number(bill.shipping)||0)); }
+    const total = Number(bill.total)||0;
+    ['#billAmount','#grandTotal'].forEach(sel => { const el=clone.querySelector(sel); if(el) el.textContent=money(total); });
+    const words = clone.querySelector('#billAmountWords'); if (words) words.textContent = numberToWordsIndian(total);
+    const itemsTotal = clone.querySelector('#itemsTotal'); if (itemsTotal) itemsTotal.textContent = money(total-(Number(bill.shipping)||0));
+    printHtml = clone.outerHTML;
+  }
+
+  const parsed = new DOMParser().parseFromString(printHtml, 'text/html');
+  const savedPaper = parsed.querySelector('#billPaper');
+  if (savedPaper) {
+    paper.innerHTML = savedPaper.innerHTML;
+    paper.dataset.paperSize = bill.paperSize || savedPaper.dataset.paperSize || 'A4';
+  }
+  const qr = paper.querySelector('.payment-qr img');
+  if (qr && activeQrSrc) qr.setAttribute('src', activeQrSrc);
+  else paper.querySelectorAll('.payment-qr').forEach(el=>el.remove());
+  const size = bill.paperSize || paper.dataset.paperSize || 'A4';
+  const selector = document.getElementById('paperSize');
+  if (selector && ['A4','A5','CUSTOM'].includes(size)) selector.value = size;
+
+  openAppPage('bill');
+  const restore = () => {
+    paper.innerHTML = previousHtml;
+    paper.dataset.paperSize = previousSize;
+    document.getElementById('billView').style.display = previousPage;
+    const toolbar = document.querySelector('#billView .toolbar');
+    if (toolbar) toolbar.style.display = previousToolbar;
+    window.removeEventListener('afterprint', restore);
+  };
+  window.addEventListener('afterprint', restore, {once:true});
+  printCurrentBill();
+  // Safety fallback for browsers that do not dispatch afterprint.
+  setTimeout(restore, 120000);
+}
+
+function deleteSavedBill(id) {
+  if (!confirm('આ સેવ કરેલું બિલ કાઢી નાખવું છે?')) return;
+  localStorage.setItem(BILL_STORE_KEY, JSON.stringify(getSavedBills().filter(b => Number(b.id) !== Number(id))));
+  showSavedBills();
+  renderProductSummary();
+}
+function downloadFile(name, content, type) {
+  const blob = new Blob([content], {type});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = name; a.click();
+  URL.revokeObjectURL(url);
+}
+function exportBillsCSV() {
+  const bills = getSavedBills();
+  const rows = [['Type','Invoice','Date','Customer','Total','Purchase Cost','Profit/Loss']];
+  bills.forEach(b => rows.push([b.type === 'purchase' ? 'Purchase' : 'Selling',b.invoice,b.date,b.customer,b.total,b.cost,Number(b.total||0)-Number(b.cost||0)]));
+  const csv = rows.map(r => r.map(v => '"' + String(v ?? '').replace(/"/g,'""') + '"').join(',')).join('\r\n');
+  downloadFile('Business-bills.csv', '\\ufeff' + csv, 'text/csv;charset=utf-8;');
+}
+
+function addBillProductRow() {
+  const tbody = document.querySelector('tbody.items');
+  if (!tbody) return;
+  // Once products are added, collapse the large blank writing area so rows sit together.
+  tbody.classList.add('compact-rows');
+  const row = document.createElement('tr');
+  row.className = 'item-row';
+  row.innerHTML = '<td class="sr"></td>' +
+    '<td contenteditable="true" class="product"></td>' +
+    '<td contenteditable="true" class="ml"></td>' +
+    '<td contenteditable="true" class="qty"></td>' +
+    '<td contenteditable="true" class="rate"></td>' +
+    '<td class="amount">0.00</td>';
+  tbody.appendChild(row);
+  applyCustomBillColumns();
+  updateGSTToggleButton();
+  calculateTotals();
+  const productCell = row.querySelector('.product');
+  if (productCell) productCell.focus();
+  scheduleAutoBackup();
+}
+
+const STAMP_SIGNATURE_KEY = 'm50StampSignatureV1';
+function applyStampSignature(dataUrl) {
+  const billImage = document.getElementById('stampSignatureOnBill');
+  const preview = document.getElementById('stampSignaturePreview');
+  if (dataUrl) {
+    billImage.src = dataUrl;
+    billImage.style.display = 'block';
+    preview.src = dataUrl;
+    preview.style.display = 'block';
+    document.getElementById('stampSignatureStatus').textContent = 'સ્ટેમ્પ/સહી સેવ છે.';
+  } else {
+    billImage.removeAttribute('src');
+    billImage.style.display = 'none';
+    preview.removeAttribute('src');
+    preview.style.display = 'none';
+    document.getElementById('stampSignatureStatus').textContent = 'હાલ સ્ટેમ્પ/સહી ઉમેરેલ નથી.';
+  }
+}
+function loadStampSignature(input) {
+  const file = input.files && input.files[0];
+  if (!file) return;
+  if (!/^image\/(png|jpeg|webp)$/.test(file.type)) {
+    alert('કૃપા કરીને PNG, JPG અથવા WEBP ફોટો પસંદ કરો.'); input.value = ''; return;
+  }
+  if (file.size > 2 * 1024 * 1024) {
+    alert('ફોટો 2 MB કરતાં નાનો રાખો.'); input.value = ''; return;
+  }
+  const reader = new FileReader();
+  reader.onload = function() {
+    try {
+      localStorage.setItem(STAMP_SIGNATURE_KEY, String(reader.result));
+      applyStampSignature(String(reader.result));
+      scheduleAutoBackup();
+      alert('સ્ટેમ્પ/સહી સેવ થઈ ગઈ. હવે હાલના અને નવા બિલમાં દેખાશે. જૂનાં સેવ કરેલા બિલ બદલાશે નહીં.');
+    } catch (e) {
+      alert('સ્ટેમ્પ/સહી સેવ થઈ શકી નથી. ફોટો નાનો કરીને ફરી પ્રયાસ કરો.');
+    }
+  };
+  reader.readAsDataURL(file);
+}
+function removeStampSignature() {
+  if (!confirm('સ્ટેમ્પ/સહી દૂર કરવી છે?')) return;
+  localStorage.removeItem(STAMP_SIGNATURE_KEY);
+  applyStampSignature('');
+  scheduleAutoBackup();
+}
+
+
+const PAYMENT_QR_KEY = 'm50PaymentQrImage';
+function applyPaymentQR(src) {
+ const box=document.getElementById('paymentQrOnBill');
+ const img=box?.querySelector('img');
+ if(!box||!img)return;
+ if(src){img.src=src;img.style.display='block';box.style.display='block';}
+ else {img.removeAttribute('src');img.style.display='none';box.style.display='none';}
+}
+function loadPaymentQR(input) {
+ const file=input.files&&input.files[0]; if(!file)return;
+ if(!/^image\/(png|jpeg|webp)$/.test(file.type)||file.size>5*1024*1024){alert('PNG/JPG/WEBP QR image પસંદ કરો (5MB સુધી).');input.value='';return;}
+ const reader=new FileReader(); reader.onload=function(){const data=String(reader.result);try{localStorage.setItem(PAYMENT_QR_KEY,data);applyPaymentQR(data);document.getElementById('paymentQrStatus').textContent='QR સેવ થયો';scheduleAutoBackup();}catch(e){alert('QR સેવ થઈ શક્યો નથી. નાની image પસંદ કરો.')}};reader.readAsDataURL(file);
+}
+function resetPaymentQR(){if(!confirm('તમારો સેવ કરેલો payment QR દૂર કરવો છે?'))return;localStorage.removeItem(PAYMENT_QR_KEY);applyPaymentQR('');document.getElementById('paymentQrStatus').textContent='તમારો QR દૂર થયો';scheduleAutoBackup();}
+(function(){
+  const h=document.getElementById('mlHeader');
+  const ML_HEADER_KEY='m50MlHeaderName';
+  if(h){
+    try { h.textContent=localStorage.getItem(ML_HEADER_KEY) || h.textContent.trim() || 'ML'; } catch(e) {}
+    const saveMlHeaderName=()=>{
+      const name=(h.textContent||'').trim() || 'ML';
+      h.textContent=name;
+      try { localStorage.setItem(ML_HEADER_KEY,name); } catch(e) {}
+      // Keep the same column title in the active bill and every saved bill snapshot.
+      document.querySelectorAll('#savedBillsArea #mlHeader').forEach(el=>el.textContent=name);
+      try {
+        const bills=JSON.parse(localStorage.getItem(BILL_STORE_KEY)||'[]');
+        bills.forEach(b=>{ if(b.paperHtml){ const doc=new DOMParser().parseFromString(b.paperHtml,'text/html'); const old=doc.querySelector('#mlHeader'); if(old){old.textContent=name; b.paperHtml=doc.querySelector('#billPaper')?.outerHTML || b.paperHtml;} } });
+        localStorage.setItem(BILL_STORE_KEY,JSON.stringify(bills));
+      } catch(e) {}
+    };
+    h.addEventListener('input',saveMlHeaderName);
+    h.addEventListener('blur',saveMlHeaderName);
+    h.addEventListener('change',saveMlHeaderName);
+  }
+  try { const saved=localStorage.getItem(PAYMENT_QR_KEY); applyPaymentQR(saved || ''); } catch(e) { applyPaymentQR(''); }
+})();
+loadCompanyDetails();
+setAutomaticInvoiceDetails();
+let savedPaperSize = 'A4';
+try {
+  savedPaperSize = localStorage.getItem('patelMobilePaperSize') || 'A4';
+  document.getElementById('paperWidth').value = localStorage.getItem('patelMobilePaperWidth') || '148';
+  document.getElementById('paperHeight').value = localStorage.getItem('patelMobilePaperHeight') || '210';
+} catch (e) {}
+setPaperSize(savedPaperSize);
+try { applyStampSignature(localStorage.getItem(STAMP_SIGNATURE_KEY) || ''); }
+catch (e) { applyStampSignature(''); }
+// Restore saved custom columns (including GST) whenever the bill opens.
+applyCustomBillColumns();
+let savedPremiumFormat=0;try{savedPremiumFormat=Number(localStorage.getItem('m50PremiumBillFormat')||0)}catch(e){}applyPremiumBillFormat(savedPremiumFormat);
+renderPremiumBillFormats();
+renderMasterProductList();
+updateGSTToggleButton();
+calculateTotals();
+showSavedBills();
+checkWeeklyBackup();
+mountAppSections();
+openAppPage('home');
+
+function setBillTypeChoice(type) {
+  const value = type === 'purchase' ? 'purchase' : 'selling';
+  const main = document.getElementById('billType');
+  const quick = document.getElementById('billTypeQuick');
+  if (main) main.value = value;
+  if (quick) quick.value = value;
+  updateProfitLoss();
+  scheduleAutoBackup();
+}
+
+
+// Barcode/QR product catalogue. Product data remains on this device in localStorage.
+const MASTER_PRODUCTS_KEY='invoiceBillProductCatalogueV1';
+let productScanStream=null, productScanMode='master', productScanFrame=0, productScanBusy=false;
+function getMasterProducts(){try{return JSON.parse(localStorage.getItem(MASTER_PRODUCTS_KEY)||'[]')}catch(e){return[]}}
+function saveMasterProducts(list){localStorage.setItem(MASTER_PRODUCTS_KEY,JSON.stringify(list));scheduleAutoBackup();}
+function clearMasterProductForm(){
+ ['masterProductCode','masterProductName','masterProductMl','masterProductPrice'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+ const status=document.getElementById('masterProductStatus');if(status)status.textContent='';
+ const save=document.querySelector('#productCodePage button[onclick="saveMasterProduct()"]');if(save)save.textContent='✓ Save Product';
+}
+function saveMasterProduct(){
+ const code=(document.getElementById('masterProductCode')?.value||'').trim();
+ const name=(document.getElementById('masterProductName')?.value||'').trim();
+ const ml=(document.getElementById('masterProductMl')?.value||'').trim();
+ const priceRaw=(document.getElementById('masterProductPrice')?.value||'').trim();
+ const price=Number(priceRaw);
+ const status=document.getElementById('masterProductStatus');
+ if(!name||priceRaw===''||!Number.isFinite(price)||price<0){if(status)status.textContent='કૃપા કરીને Product Name અને યોગ્ય Price ભરો.';return;}
+ try{
+  const list=getMasterProducts(); const finalCode=code || ('PRD-'+Date.now()); const item={code:finalCode,name,ml,price};
+  const index=list.findIndex(p=>String(p.code).toLowerCase()===finalCode.toLowerCase());
+  if(index>=0){list[index]=item;}else{list.push(item);}
+  saveMasterProducts(list);renderMasterProductList();clearMasterProductForm();
+  if(status)status.textContent=(index>=0?'✓ જૂની પ્રોડક્ટ અપડેટ થઈ.':'✓ નવી પ્રોડક્ટ સેવ થઈ.')+' Code: '+finalCode;
+ }catch(e){if(status)status.textContent='સેવ થઈ શક્યું નથી. ફોનમાં જગ્યા ખાલી કરો અથવા browser storage તપાસો.';}
+}
+function editMasterProduct(i){
+ const p=getMasterProducts()[i];if(!p)return;
+ document.getElementById('masterProductCode').value=p.code||'';
+ document.getElementById('masterProductName').value=p.name||'';
+ document.getElementById('masterProductMl').value=p.ml||'';
+ document.getElementById('masterProductPrice').value=String(p.price??'');
+ const status=document.getElementById('masterProductStatus');if(status)status.textContent='પ્રોડક્ટમાં ફેરફાર કરો અને Save Product દબાવો.';
+ document.getElementById('masterProductName').focus();
+}
+function renderMasterProductList(){
+ const box=document.getElementById('masterProductList');if(!box)return;
+ const all=getMasterProducts();
+ const query=(document.getElementById('masterProductSearch')?.value||'').trim().toLowerCase();
+ const list=all.map((p,i)=>({...p,_index:i})).filter(p=>!query||[p.code,p.name,p.ml].some(v=>String(v||'').toLowerCase().includes(query)));
+ const count=document.getElementById('masterProductCount');if(count)count.textContent='કુલ '+all.length+' પ્રોડક્ટ';
+ box.innerHTML='<h3>Saved Product Codes ('+list.length+')</h3>'+(list.length?'<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse"><thead><tr><th>Code</th><th>Product</th><th>ML</th><th>Price ₹</th><th>Action</th></tr></thead><tbody>'+list.map(p=>'<tr><td>'+escapeHtml(p.code)+'</td><td>'+escapeHtml(p.name)+'</td><td>'+escapeHtml(p.ml||'')+'</td><td>'+money(p.price)+'</td><td style="white-space:nowrap"><button type="button" onclick="editMasterProduct('+p._index+')" style="padding:6px 9px">Edit</button> <button type="button" onclick="deleteMasterProduct('+p._index+')" style="background:#8b2635;padding:6px 9px">Delete</button></td></tr>').join('')+'</tbody></table></div>':'<p style="color:#667487">'+(query?'આ શોધમાં પ્રોડક્ટ મળી નથી.':'હજુ કોઈ પ્રોડક્ટ સેવ નથી.')+'</p>');
+}
+function deleteMasterProduct(i){const list=getMasterProducts();if(!list[i]||!confirm('આ પ્રોડક્ટ કાઢી નાખવી છે?'))return;list.splice(i,1);saveMasterProducts(list);renderMasterProductList();}
+function addBillProductByCode(){
+ const input=document.getElementById('billProductCodeInput');
+ const code=(input?.value||'').trim();
+ if(!code){alert('Product Code લખો અથવા Scan Product દબાવો.');input?.focus();return;}
+ const product=getMasterProducts().find(p=>String(p.code).trim().toLowerCase()===code.toLowerCase());
+ if(!product){alert('આ Product Code સેવ નથી. પહેલા Product Code Manager માં પ્રોડક્ટ સેવ કરો.\nCode: '+code);input?.focus();return;}
+ productScanMode='bill';
+ handleScannedProductCode(code);
+ if(input){input.value='';input.focus();}
+}
+function openProductScanner(){productScanMode='master';openScannerCommon('Product Entry — Scan Barcode / QR');}
+function openBillProductScanner(){productScanMode='bill';openScannerCommon('New Bill — Scan Product');}
+async function openScannerCommon(title){
+ const modal=document.getElementById('productScanModal');
+ document.getElementById('productScanTitle').textContent=title;
+ document.getElementById('productScanMessage').textContent='કેમેરા શરૂ થઈ રહ્યો છે… barcode/QR ને કેમેરાની વચ્ચે રાખો.';
+ modal.style.display='flex';
+ const video=document.getElementById('productScanVideo');
+ const torch=document.getElementById('productTorchButton'); if(torch){torch.style.display='inline-block';torch.disabled=false;torch.textContent='🔦 Torch';}
+ if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){document.getElementById('productScanMessage').textContent='આ બ્રાઉઝરમાં Camera ઉપલબ્ધ નથી. USB/Bluetooth barcode scanner ને New Bill ના કોડ ખાના સાથે વાપરો.';return;}
+ try{
+  try { productScanStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:1920},height:{ideal:1080}},audio:false}); }
+  catch(firstError){ productScanStream=await navigator.mediaDevices.getUserMedia({video:true,audio:false}); }
+  video.srcObject=productScanStream;video.style.display='block';await video.play();
+  const track=productScanStream.getVideoTracks()[0];
+  try{if(track&&track.applyConstraints)await track.applyConstraints({advanced:[{focusMode:'continuous'}]});}catch(e){}
+  let hasTorch=false;try{hasTorch=!!(track&&track.getCapabilities&&track.getCapabilities().torch);}catch(e){}
+  if(torch){torch.style.display='inline-block';torch.disabled=!hasTorch;torch.title=hasTorch?'Flash ચાલુ/બંધ કરો':'આ ફોનમાં Torch સપોર્ટ નથી';}
+  let detector=null;
+  if('BarcodeDetector' in window){
+   let formats=['qr_code','ean_13','ean_8','upc_a','upc_e','code_128','code_39','itf','codabar','data_matrix','pdf417','aztec'];
+   try{if(BarcodeDetector.getSupportedFormats){const supported=await BarcodeDetector.getSupportedFormats();formats=formats.filter(f=>supported.includes(f));}}catch(e){}
+   if(formats.length){try{detector=new BarcodeDetector({formats});}catch(e){detector=null;}}
+  }
+  const zxingReader=(!detector && window.ZXing && window.ZXing.BrowserMultiFormatReader) ? new window.ZXing.BrowserMultiFormatReader() : null;
+  if(!detector&&!zxingReader){document.getElementById('productScanMessage').textContent='આ browser માં camera barcode decoder ઉપલબ્ધ નથી. New Bill ના Barcode ખાના માં USB/Bluetooth scanner લગાવીને સ્કેન કરો.';return;}
+  document.getElementById('productScanMessage').textContent='Barcode/QR ને કેમેરાની વચ્ચે રાખો. સ્કેન થતાં પ્રોડક્ટ બિલમાં ઉમેરાશે.';
+  productScanBusy=false;
+  const scan=async()=>{
+   if(!productScanStream||modal.style.display==='none')return;
+   if(productScanBusy){productScanFrame=requestAnimationFrame(scan);return;}
+   productScanBusy=true;
+   try{
+    let value='';
+    if(detector){const codes=await detector.detect(video);if(codes&&codes.length)value=codes[0].rawValue||'';}
+    else if(zxingReader){try{const result=zxingReader.decodeFromVideoElement(video);if(result)value=result.getText();}catch(e){}}
+    if(value){productScanBusy=false;handleScannedProductCode(value);return;}
+   }catch(e){}
+   productScanBusy=false;productScanFrame=requestAnimationFrame(scan);
+  };
+  productScanFrame=requestAnimationFrame(scan);
+ }catch(e){video.style.display='none';document.getElementById('productScanMessage').textContent='કેમેરા ચાલુ થઈ શક્યો નથી. Chrome માં Camera permission આપો અને HTTPS અથવા localhost પરથી એપ ખોલો.';}
+}
+async function toggleProductTorch(){
+ const track=productScanStream&&productScanStream.getVideoTracks()[0];if(!track)return;
+ try{const caps=track.getCapabilities?track.getCapabilities():{};if(!caps.torch){const btn=document.getElementById('productTorchButton');if(btn)btn.disabled=true;return;}
+  const current=!!(track.getSettings&&track.getSettings().torch);await track.applyConstraints({advanced:[{torch:!current}]});
+  const btn=document.getElementById('productTorchButton');if(btn)btn.textContent=!current?'🔦 Torch ON':'🔦 Torch';
+ }catch(e){document.getElementById('productScanMessage').textContent='આ ફોનમાં Torch ચાલુ થઈ શક્યો નથી.';}
+}
+function stopProductScanner(){if(productScanFrame)cancelAnimationFrame(productScanFrame);productScanFrame=0;productScanBusy=false;if(productScanStream){productScanStream.getTracks().forEach(t=>t.stop());productScanStream=null;}const v=document.getElementById('productScanVideo');if(v){v.pause();v.srcObject=null;v.style.display='none';}}
+function closeProductScanner(){stopProductScanner();document.getElementById('productScanModal').style.display='none';}
+function handleScannedProductCode(code){
+ stopProductScanner();closeProductScanner();
+ if(productScanMode==='master'){document.getElementById('masterProductCode').value=code;document.getElementById('masterProductName').focus();return;}
+ const cleanCode=String(code).trim().replace(/[\r\n]+$/,'');
+ const product=getMasterProducts().find(p=>String(p.code).trim().toLowerCase()===cleanCode.toLowerCase());
+ if(!product){alert('આ code માટે product સેવ નથી. પહેલા Products માં Product Entry કરીને સેવ કરો.\nCode: '+code);return;}
+ const tbody=document.querySelector('tbody.items');
+ let row=window.activeBillProductRow;
+ const rowHasProduct=r=>!!(r && ((r.querySelector('.product')?.innerText||'').replace(/\u00a0/g,' ').trim() || (r.querySelector('.rate')?.innerText||'').trim()));
+ if(!row||!tbody?.contains(row)||rowHasProduct(row)){
+   row=tbody?.querySelector('.item-row:last-child');
+   if(!row||rowHasProduct(row)){addBillProductRow();row=tbody?.querySelector('.item-row:last-child');}
+ }
+ if(!row)return;
+ row.querySelector('.product').textContent=product.name;
+ row.querySelector('.ml').textContent=product.ml||'';
+ row.querySelector('.qty').textContent='1';
+ row.querySelector('.rate').textContent=String(parseBillNumber(product.price));
+ calculateTotals();scheduleAutoBackup();
+ const billCodeInput=document.getElementById('billProductCodeInput');if(billCodeInput){billCodeInput.value='';billCodeInput.focus();}
+}
+document.addEventListener('focusin',e=>{const row=e.target.closest&&e.target.closest('.item-row');if(row)window.activeBillProductRow=row;});
+document.addEventListener('click',e=>{const row=e.target.closest&&e.target.closest('.item-row');if(row)window.activeBillProductRow=row;});
+
+
+// Remove the unwanted name "Vamja" wherever it appears inside the bill,
+// including company/customer text loaded from previously saved browser data.
+(function removeVamjaFromBill() {
+  const bill = document.getElementById('billPaper');
+  if (!bill) return;
+  const clean = value => String(value || '').replace(/\bvamja\b/gi, '').replace(/[ \t]{2,}/g, ' ').trim();
+  const cleanBillText = () => {
+    const walker = document.createTreeWalker(bill, NodeFilter.SHOW_TEXT);
+    const nodes = [];
+    while (walker.nextNode()) nodes.push(walker.currentNode);
+    nodes.forEach(node => {
+      const next = clean(node.nodeValue);
+      if (next !== node.nodeValue) node.nodeValue = next;
+    });
+    bill.querySelectorAll('input, textarea').forEach(field => {
+      if (/\bvamja\b/i.test(field.value)) field.value = clean(field.value);
+    });
+  };
+  cleanBillText();
+  const observer = new MutationObserver(cleanBillText);
+  observer.observe(bill, { childList: true, subtree: true, characterData: true });
+})();
+
+</script>
+</body>
+</html>
